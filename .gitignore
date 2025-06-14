@@ -1,0 +1,32 @@
+# Dependency directories
+/node_modules
+/vendor
+
+# Environment file
+.env
+.env.*.local
+
+# Log files
+*.log
+storage/logs/*
+
+# Cache and session files
+storage/framework/cache/*
+storage/framework/views/*
+storage/framework/sessions/*
+
+# Debug files
+.phpunit.result.cache
+.idea
+.vscode
+
+# Frontend build
+/public/build
+/public/hot
+
+# Asset storage
+/public/storage
+
+# Sistem operasi
+.DS_Store
+Thumbs.db
