@@ -10,6 +10,7 @@
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.12.1/font/bootstrap-icons.min.css">
     <link rel="dns-prefetch" href="//fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=Nunito" rel="stylesheet">
 
@@ -41,6 +42,7 @@
             transition: all 0.3s;
         }
         .nav-link i{
+            color: #000000;
             margin-right: 10px;
             width: 20px;
             text-align: center;
@@ -72,7 +74,7 @@
             </div>
             <nav class="mt-6">
                 <a href="{{ route('home') }}" class="nav-link {{ Request::routeIs('home') ? 'active' : '' }}">
-                    <i class="fas fa-home"></i> Dashboard
+                    <i class="bi bi-house-door"></i> Home
                 </a>
             </nav>
         </div>
