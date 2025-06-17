@@ -15,66 +15,84 @@
 
     <!-- Scripts -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
+    @livewireStyles
+
+    <style>
+        .sidebar{
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            overflow-y: auto;
+            transition: all 0.3s;
+            padding: 20px;
+            border-right: 1px solid #E5E7EB;
+        }
+        .left-sidebar{
+            left: 0;
+            width: 250px;
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+        .nav-link{
+            color: #000000;
+            display: flex;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            transition: all 0.3s;
+        }
+        .nav-link i{
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content{
+            margin-left: 250px;
+            margin-right: 300px;
+            padding: 20px;
+        }
+        .main-content.no-sidebar{
+            margin-left: 0;
+            margin-right: 0;
+        }
+    </style>
+
 </head>
-<body>
+<body class="bg-white">
     <div id="app">
-        <nav class="navbar navbar-expand-md navbar-light bg-white shadow-sm">
-            <div class="container">
-                <a class="navbar-brand" href="{{ url('/') }}">
-                    {{ config('app.name', 'Laravel') }}
+        @php
+        $isAuthPage = Request::is('login') || Request::is('register')
+        || Request::is('password/*')|| Request::is('email/verify/*');
+        @endphp
+
+        @unless($isAuthPage)
+        <div class="sidebar left-sidebar">
+            <div class="px-4 py-6 d-flex justify-content-center">
+                <img src="{{ asset('images/Logo Icon Soluxio.png') }}" style="height: 121px; width: 121px;" alt="">
+            </div>
+            <nav class="mt-6">
+                <a href="{{ route('home') }}" class="nav-link {{ Request::routeIs('home') ? 'active' : '' }}">
+                    <i class="fas fa-home"></i> Dashboard
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="{{ __('Toggle navigation') }}">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+            </nav>
+        </div>
+        @endunless
 
-                <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                    <!-- Left Side Of Navbar -->
-                    <ul class="navbar-nav me-auto">
-
-                    </ul>
-
-                    <!-- Right Side Of Navbar -->
-                    <ul class="navbar-nav ms-auto">
-                        <!-- Authentication Links -->
-                        @guest
-                            @if (Route::has('login'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('login') }}">{{ __('Login') }}</a>
-                                </li>
-                            @endif
-
-                            @if (Route::has('register'))
-                                <li class="nav-item">
-                                    <a class="nav-link" href="{{ route('register') }}">{{ __('Register') }}</a>
-                                </li>
-                            @endif
-                        @else
-                            <li class="nav-item dropdown">
-                                <a id="navbarDropdown" class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-pre>
-                                    {{ Auth::user()->name }}
-                                </a>
-
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                                    <a class="dropdown-item" href="{{ route('logout') }}"
-                                       onclick="event.preventDefault();
-                                                     document.getElementById('logout-form').submit();">
-                                        {{ __('Logout') }}
-                                    </a>
-
-                                    <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
-                                        @csrf
-                                    </form>
-                                </div>
-                            </li>
-                        @endguest
-                    </ul>
+        {{-- main Content --}}
+        <div class="main-content {{ $isAuthPage ? 'no-sidebar' : '' }}">
+            @if ($isAuthPage)
+            <div class="auth-container">
+                <div class="auth-card">
+                    {{ $slot ?? '' }}
+                    @yield('content')
                 </div>
             </div>
-        </nav>
-
-        <main class="py-4">
+            @else
+            {{ $slot ?? '' }}
             @yield('content')
-        </main>
+                
+            @endif
+        </div>
     </div>
 </body>
 </html>
