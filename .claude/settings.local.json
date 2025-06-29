@@ -4,7 +4,15 @@
       "Bash(composer:*)",
       "Bash(ls:*)",
       "Bash(rm:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Bash(touch:*)",
+      "Bash(mkdir:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(./vendor/bin/pint)",
+      "Bash(./vendor/bin/sail artisan migrate:status)"
     ],
     "deny": []
   }

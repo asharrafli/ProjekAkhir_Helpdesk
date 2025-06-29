@@ -6,6 +6,9 @@
 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+    <meta name="user-id" content="{{ Auth::id() }}">
+    @endauth
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -124,6 +127,12 @@
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
 
+                @can('view-manager-dashboard')
+                <a href="{{ route('manager.dashboard') }}" class="nav-link {{ Request::routeIs('manager.dashboard') ? 'active' : '' }}">
+                    <i class="bi bi-graph-up"></i> Manager Dashboard
+                </a>
+                @endcan
+
                 @can('view-tickets')
                 <div class="dropdown">
                     <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
@@ -132,7 +141,6 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ route('tickets.index') }}">All Tickets</a></li>
                         <li><a class="dropdown-item" href="{{ route('tickets.create') }}">Create Ticket</a></li>
-                        <li><a class="dropdown-item" href="{{ route('tickets.assigned') }}">My Assigned</a></li>
                     </ul>
                 </div>
                 @endcan
@@ -155,6 +163,18 @@
                 </a>
                 @endcan
 
+                @can('manage-categories')
+                <a href="{{ route('admin.categories.index') }}" class="nav-link {{ Request::routeIs('admin.categories.*') ? 'active' : '' }}">
+                    <i class="bi bi-tags"></i> Categories
+                </a>
+                @endcan
+
+                @can('manage-categories')
+                <a href="{{ route('admin.subcategories.index') }}" class="nav-link {{ Request::routeIs('admin.subcategories.*') ? 'active' : '' }}">
+                    <i class="bi bi-tag"></i> Subcategories
+                </a>
+                @endcan
+
                 @can('view-activity-logs')
                 <a href="{{ route('admin.activity-logs') }}" class="nav-link {{ Request::routeIs('admin.activity-logs') ? 'active' : '' }}">
                     <i class="bi bi-activity"></i> Activity Logs
@@ -169,6 +189,21 @@
 
         <!-- Right Sidebar -->
         <div class="sidebar right-sidebar">
+            <!-- Notification Bell -->
+            <div class="notification-section mb-4">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary position-relative w-100" type="button" id="notificationBell" data-bs-toggle="dropdown">
+                        <i class="bi bi-bell"></i> Notifications
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="unreadBadge" style="display: none;">
+                            0
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                        <li><span class="dropdown-item-text text-muted">Loading notifications...</span></li>
+                    </ul>
+                </div>
+            </div>
+
             <div class="user-profile-card">
                 <div class="text-center mb-3">
                     <img src="{{ Auth::user()->avatar ?? 'https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&background=random' }}" 
@@ -245,6 +280,8 @@
     </div>
 
     @livewireScripts
+    
+    <!-- Notifications will be loaded via Vite in app.js -->
     
     <script>
         // Initialize sortable for stats cards
