@@ -23,9 +23,6 @@ Route::get('/', function () {
 
 Auth::routes();
 
-// Broadcasting auth routes
-Broadcast::routes(['middleware' => ['auth']]);
-
 // Protected routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
@@ -46,9 +43,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/notifications', function () {
             return view('test-notifications');
         })->name('notifications');
+        Route::get('/broadcast-auth', function () {
+            return view('test-broadcast-auth');
+        })->name('broadcast-auth');
         Route::post('/broadcast', [TestNotificationController::class, 'testBroadcast'])->name('broadcast');
         Route::post('/pusher', [TestNotificationController::class, 'testPusher'])->name('pusher');
         Route::get('/status', [TestNotificationController::class, 'status'])->name('status');
+        Route::post('/create-notification', [TestNotificationController::class, 'createTestNotification'])->name('create-notification');
     });
 
     // Ticket routes
@@ -144,4 +145,41 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/manager/dashboard/export', [ReportController::class, 'exportManagerDashboard'])
         ->name('manager.dashboard.export')
         ->middleware(['auth', 'can:generate-reports']);
+
+    // Debug routes (remove in production)
+    Route::get('/test-notification', function() {
+        $user = auth()->user();
+        $ticket = \App\Models\Tickets::first();
+        
+        if (!$ticket) {
+            return 'No tickets found to test with';
+        }
+        
+        \Illuminate\Support\Facades\Log::info('Testing notification for user: ' . $user->id);
+        
+        $user->notify(new \App\Notifications\TicketCreated($ticket));
+        
+        return response()->json([
+            'message' => 'Test notification sent!',
+            'user' => $user->name,
+            'ticket' => $ticket->ticket_number
+        ]);
+    })->middleware('auth');
+
+    Route::get('/test-pusher', function() {
+        $ticket = \App\Models\Tickets::first();
+        
+        if (!$ticket) {
+            return 'No tickets found to test with';
+        }
+        
+        \Illuminate\Support\Facades\Log::info('Testing Pusher broadcast');
+        
+        event(new \App\Events\TicketCreated($ticket));
+        
+        return response()->json([
+            'message' => 'Pusher event triggered!',
+            'ticket' => $ticket->ticket_number
+        ]);
+    })->middleware('auth');
 });

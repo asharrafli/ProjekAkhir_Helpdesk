@@ -58,6 +58,9 @@
                                         <button class="btn btn-warning" onclick="testPusher()">
                                             <i class="bi bi-wifi"></i> Test Pusher Connection
                                         </button>
+                                        <button class="btn btn-primary" onclick="createTestNotification()">
+                                            <i class="bi bi-database"></i> Create DB Notification
+                                        </button>
                                         <button class="btn btn-info" onclick="clearLogs()">
                                             <i class="bi bi-trash"></i> Clear Console
                                         </button>
@@ -195,13 +198,58 @@ async function testPusher() {
             }
         });
         
-        const data = await response.json();
+        // Log the raw response for debugging
+        const responseText = await response.text();
+        logResult('Raw response: ' + responseText.substring(0, 200) + '...', 'info');
+        
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            logResult('❌ Failed to parse JSON response: ' + parseError.message, 'error');
+            logResult('Response was: ' + responseText, 'error');
+            return;
+        }
         
         if (data.success) {
             logResult('✅ Pusher connection test successful', 'success');
             logResult('Check the "test-channel" in Pusher Debug Console', 'info');
         } else {
             logResult('❌ Pusher test failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        logResult('❌ Network error: ' + error.message, 'error');
+    }
+}
+
+async function createTestNotification() {
+    try {
+        logResult('Creating test notification in database...', 'info');
+        const response = await fetch('/test/create-notification', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            logResult('✅ Test notification created successfully', 'success');
+            logResult(`Ticket: ${data.ticket_number}`, 'info');
+            logResult(`Total notifications: ${data.total_notifications}`, 'info');
+            logResult(`Unread notifications: ${data.unread_notifications}`, 'info');
+            
+            // Refresh notification status and reload notifications
+            loadStatus();
+            if (window.notificationManager) {
+                window.notificationManager.loadUnreadNotifications();
+                window.notificationManager.loadNotifications();
+            }
+        } else {
+            logResult('❌ Failed to create test notification: ' + (data.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         logResult('❌ Network error: ' + error.message, 'error');

@@ -1,5 +1,4 @@
 import './bootstrap';
-import './simple-notifications';
 import './notifications';
 
 // Make user ID available globally for notifications

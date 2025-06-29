@@ -120,12 +120,32 @@ class ManagerDashboardController extends Controller
 
         $technicians = $query->get()->map(function ($user) {
             $tickets = $user->assignedTickets;
+            $totalAssigned = $tickets->count();
+            $resolved = $tickets->whereIn('status', ['resolved', 'closed'])->count();
+            $inProgress = $tickets->where('status', 'in_progress')->count();
+            
+            // Calculate average resolution time (in hours)
+            $resolvedTickets = $tickets->whereIn('status', ['resolved', 'closed'])->whereNotNull('resolved_at');
+            $avgResolutionTime = 0;
+            
+            if ($resolvedTickets->count() > 0) {
+                $totalResolutionTime = $resolvedTickets->sum(function($ticket) {
+                    return $ticket->resolved_at ? 
+                        Carbon::parse($ticket->created_at)->diffInHours(Carbon::parse($ticket->resolved_at)) : 0;
+                });
+                $avgResolutionTime = $totalResolutionTime / $resolvedTickets->count();
+            }
+            
+            // Calculate efficiency rating (percentage of resolved vs assigned)
+            $efficiencyRating = $totalAssigned > 0 ? ($resolved / $totalAssigned) * 100 : 0;
+            
             return [
                 'name' => $user->name,
-                'total_assigned' => $tickets->count(),
-                'resolved' => $tickets->where('status', 'resolved')->count(),
-                'avg_resolution_time' => $tickets->where('status', 'resolved')
-                                              ->avg('response_time_minutes') ?: 0,
+                'total_assigned' => $totalAssigned,
+                'resolved' => $resolved,
+                'in_progress' => $inProgress,
+                'avg_resolution_time' => round($avgResolutionTime, 1), // in hours
+                'efficiency_rating' => round($efficiencyRating, 1), // as percentage
             ];
         });
 
@@ -133,20 +153,35 @@ class ManagerDashboardController extends Controller
             'labels' => $technicians->pluck('name'),
             'datasets' => [
                 [
-                    'label' => 'Assigned Tickets',
+                    'label' => 'Total Assigned',
                     'data' => $technicians->pluck('total_assigned'),
-                    'backgroundColor' => 'rgba(255, 99, 132, 0.2)',
-                    'borderColor' => 'rgb(255, 99, 132)',
+                    'backgroundColor' => 'rgba(54, 162, 235, 0.2)',
+                    'borderColor' => 'rgb(54, 162, 235)',
                     'borderWidth' => 1
                 ],
                 [
-                    'label' => 'Resolved Tickets',
+                    'label' => 'Resolved',
                     'data' => $technicians->pluck('resolved'),
                     'backgroundColor' => 'rgba(75, 192, 192, 0.2)',
                     'borderColor' => 'rgb(75, 192, 192)',
                     'borderWidth' => 1
+                ],
+                [
+                    'label' => 'In Progress',
+                    'data' => $technicians->pluck('in_progress'),
+                    'backgroundColor' => 'rgba(255, 206, 86, 0.2)',
+                    'borderColor' => 'rgb(255, 206, 86)',
+                    'borderWidth' => 1
                 ]
-            ]
+            ],
+            // Additional data for tooltips and metrics display
+            'technician_metrics' => $technicians->map(function($tech) {
+                return [
+                    'name' => $tech['name'],
+                    'efficiency' => $tech['efficiency_rating'],
+                    'avg_resolution' => $tech['avg_resolution_time']
+                ];
+            })
         ]);
     }
 

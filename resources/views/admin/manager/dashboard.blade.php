@@ -27,66 +27,99 @@
     </div>
 
     <!-- KPI Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-start border-primary border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-primary text-uppercase fw-bold mb-1">Total Tickets</div>
+                        <div class="h4 mb-0 fw-bold text-dark">{{ number_format($dashboardData['total_tickets']) }}</div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-ticket-alt fa-2x text-muted opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-start border-warning border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-warning text-uppercase fw-bold mb-1">Open Tickets</div>
+                        <div class="h4 mb-0 fw-bold text-dark">{{ number_format($dashboardData['open_tickets']) }}</div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-folder-open fa-2x text-muted opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-start border-success border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-success text-uppercase fw-bold mb-1">Resolved Tickets</div>
+                        <div class="h4 mb-0 fw-bold text-dark">{{ number_format($dashboardData['closed_tickets']) }}</div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-check-circle fa-2x text-muted opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="card border-start border-danger border-4 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-danger text-uppercase fw-bold mb-1">Overdue Tickets</div>
+                        <div class="h4 mb-0 fw-bold text-dark">{{ number_format($dashboardData['overdue_tickets']) }}</div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-exclamation-triangle fa-2x text-muted opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technician Performance Metrics Table -->
     <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Tickets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($dashboardData['total_tickets']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-ticket-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2">
+                    <h5 class="mb-0 fw-bold text-primary">Technician Performance Metrics</h5>
+                    <button class="btn btn-sm btn-outline-primary" id="refreshTechnicianMetrics">
+                        <i class="fas fa-sync-alt"></i> <span class="d-none d-sm-inline">Refresh</span>
+                    </button>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Open Tickets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($dashboardData['open_tickets']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-folder-open fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Resolved Tickets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($dashboardData['closed_tickets']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Overdue Tickets</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($dashboardData['overdue_tickets']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="technicianMetricsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Technician</th>
+                                    <th class="text-center">Total</th>
+                                    <th class="text-center">Resolved</th>
+                                    <th class="text-center d-none d-md-table-cell">In Progress</th>
+                                    <th class="text-center d-none d-lg-table-cell">Avg Time</th>
+                                    <th class="text-center d-none d-xl-table-cell">Efficiency</th>
+                                    <th class="text-center pe-3">Performance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <div class="mt-2 text-muted">Loading performance metrics...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -94,37 +127,37 @@
     </div>
 
     <!-- Charts Row 1 -->
-    <div class="row mb-4">
-        <div class="col-xl-8 col-lg-7">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Ticket Trends</h6>
-                    <div class="dropdown no-arrow">
-                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown">
-                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-right shadow">
-                            <a class="dropdown-item refresh-chart" href="#" data-chart="ticket_trends">Refresh</a>
-                            <a class="dropdown-item export-chart" href="#" data-chart="ticket_trends">Export PNG</a>
-                        </div>
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2">
+                    <h5 class="mb-0 fw-bold text-primary">Ticket Trends</h5>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item refresh-chart" href="#" data-chart="ticket_trends"><i class="fas fa-sync-alt me-2"></i>Refresh</a></li>
+                            <li><a class="dropdown-item export-chart" href="#" data-chart="ticket_trends"><i class="fas fa-download me-2"></i>Export PNG</a></li>
+                        </ul>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="chart-area">
-                        <canvas id="ticketTrendsChart" width="100%" height="40"></canvas>
+                    <div class="chart-container">
+                        <canvas id="ticketTrendsChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Priority Distribution</h6>
+        <div class="col-12 col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 fw-bold text-primary">Priority Distribution</h5>
                 </div>
-                <div class="card-body">
-                    <div class="chart-pie pt-4 pb-2">
-                        <canvas id="priorityDistributionChart" width="100%" height="50"></canvas>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="chart-container-pie">
+                        <canvas id="priorityDistributionChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -132,28 +165,28 @@
     </div>
 
     <!-- Charts Row 2 -->
-    <div class="row mb-4">
-        <div class="col-xl-6 col-lg-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Technician Performance</h6>
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 fw-bold text-primary">Technician Performance</h5>
                 </div>
                 <div class="card-body">
-                    <div class="chart-bar">
-                        <canvas id="technicianPerformanceChart" width="100%" height="50"></canvas>
+                    <div class="chart-container">
+                        <canvas id="technicianPerformanceChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-6 col-lg-6">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Category Distribution</h6>
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 fw-bold text-primary">Category Distribution</h5>
                 </div>
-                <div class="card-body">
-                    <div class="chart-pie">
-                        <canvas id="categoryDistributionChart" width="100%" height="50"></canvas>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="chart-container-pie">
+                        <canvas id="categoryDistributionChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -161,15 +194,15 @@
     </div>
 
     <!-- Resolution Time Chart -->
-    <div class="row mb-4">
+    <div class="row g-4 mb-4">
         <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Average Resolution Time by Priority</h6>
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 fw-bold text-primary">Average Resolution Time by Priority</h5>
                 </div>
                 <div class="card-body">
-                    <div class="chart-bar">
-                        <canvas id="resolutionTimeChart" width="100%" height="30"></canvas>
+                    <div class="chart-container-wide">
+                        <canvas id="resolutionTimeChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -177,42 +210,79 @@
     </div>
 
     <!-- Recent Activities -->
-    <div class="row">
+    <div class="row g-4">
         <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Ticket Activities</h6>
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0 fw-bold text-primary">Recent Ticket Activities</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Ticket #</th>
+                                    <th class="ps-3">Ticket #</th>
                                     <th>Title</th>
-                                    <th>Status</th>
-                                    <th>Priority</th>
-                                    <th>Assigned To</th>
-                                    <th>Last Activity</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center d-none d-md-table-cell">Priority</th>
+                                    <th class="d-none d-lg-table-cell">Assigned To</th>
+                                    <th class="pe-3 d-none d-xl-table-cell">Last Activity</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($dashboardData['recent_activities'] as $ticket)
                                 <tr>
-                                    <td>{{ $ticket->ticket_number }}</td>
-                                    <td>{{ Str::limit($ticket->title, 30) }}</td>
-                                    <td>
-                                        <span class="badge badge-{{ $ticket->status_color }}">
-                                            {{ ucfirst($ticket->status) }}
-                                        </span>
+                                    <td class="ps-3">
+                                        <code class="text-primary">{{ $ticket->ticket_number }}</code>
                                     </td>
                                     <td>
-                                        <span class="badge badge-{{ $ticket->priority_color }}">
+                                        <div class="fw-medium">{{ Str::limit($ticket->title, 40) }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        @php
+                                            $statusColors = [
+                                                'open' => 'bg-info',
+                                                'in_progress' => 'bg-warning',
+                                                'closed' => 'bg-success',
+                                                'resolved' => 'bg-success',
+                                                'pending' => 'bg-secondary'
+                                            ];
+                                        @endphp
+                                        <span class="badge {{ $statusColors[$ticket->status] ?? 'bg-secondary' }}">
+                                            {{ ucfirst(str_replace('_', ' ', $ticket->status)) }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center d-none d-md-table-cell">
+                                        @php
+                                            $priorityColors = [
+                                                'low' => 'bg-success',
+                                                'medium' => 'bg-info',
+                                                'high' => 'bg-warning',
+                                                'urgent' => 'bg-danger',
+                                                'critical' => 'bg-danger'
+                                            ];
+                                        @endphp
+                                        <span class="badge {{ $priorityColors[$ticket->priority] ?? 'bg-secondary' }}">
                                             {{ ucfirst($ticket->priority) }}
                                         </span>
                                     </td>
-                                    <td>{{ $ticket->assignedTo->name ?? 'Unassigned' }}</td>
-                                    <td>{{ $ticket->last_activity_at ? $ticket->last_activity_at->diffForHumans() : 'No activity' }}</td>
+                                    <td class="d-none d-lg-table-cell">
+                                        <div class="d-flex align-items-center">
+                                            @if($ticket->assignedTo)
+                                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 24px; height: 24px; font-size: 10px;">
+                                                    {{ strtoupper(substr($ticket->assignedTo->name, 0, 1)) }}
+                                                </div>
+                                                <span class="small">{{ $ticket->assignedTo->name }}</span>
+                                            @else
+                                                <span class="text-muted small">Unassigned</span>
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="pe-3 d-none d-xl-table-cell">
+                                        <small class="text-muted">
+                                            {{ $ticket->last_activity_at ? $ticket->last_activity_at->diffForHumans() : 'No activity' }}
+                                        </small>
+                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -430,43 +500,265 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         return mapping[chartType];
     }
+
+    // Load technician performance metrics table
+    function loadTechnicianMetrics() {
+        const tbody = document.querySelector('#technicianMetricsTable tbody');
+        
+        // Show loading state
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    Loading performance metrics...
+                </td>
+            </tr>
+        `;
+        
+        const params = new URLSearchParams({
+            type: 'technician_performance',
+            period: currentPeriod
+        });
+        
+        if (currentStartDate && currentEndDate) {
+            params.append('start_date', currentStartDate);
+            params.append('end_date', currentEndDate);
+        }
+        
+        fetch(`{{ route('manager.dashboard.chart-data') }}?${params}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Technician metrics data:', data); // Debug log
+                const tbody = document.querySelector('#technicianMetricsTable tbody');
+                tbody.innerHTML = '';
+                
+                if (data.technician_metrics && data.technician_metrics.length > 0) {
+                    data.technician_metrics.forEach((tech, index) => {
+                        const totalAssigned = (data.datasets && data.datasets[0]) ? (data.datasets[0].data[index] || 0) : 0;
+                        const resolved = (data.datasets && data.datasets[1]) ? (data.datasets[1].data[index] || 0) : 0;
+                        const inProgress = (data.datasets && data.datasets[2]) ? (data.datasets[2].data[index] || 0) : 0;
+                        
+                        // Determine performance badge
+                        let performanceBadge = '';
+                        if (tech.efficiency >= 80) {
+                            performanceBadge = '<span class="badge badge-success">Excellent</span>';
+                        } else if (tech.efficiency >= 60) {
+                            performanceBadge = '<span class="badge badge-primary">Good</span>';
+                        } else if (tech.efficiency >= 40) {
+                            performanceBadge = '<span class="badge badge-warning">Average</span>';
+                        } else {
+                            performanceBadge = '<span class="badge badge-danger">Needs Improvement</span>';
+                        }
+                        
+                        const row = `
+                            <tr>
+                                <td class="ps-3"><strong>${tech.name}</strong></td>
+                                <td class="text-center">${totalAssigned}</td>
+                                <td class="text-center">${resolved}</td>
+                                <td class="text-center d-none d-md-table-cell">${inProgress}</td>
+                                <td class="text-center d-none d-lg-table-cell">${tech.avg_resolution}h</td>
+                                <td class="d-none d-xl-table-cell">
+                                    <div class="progress">
+                                        <div class="progress-bar bg-primary" role="progressbar" style="width: ${tech.efficiency}%">${tech.efficiency}%</div>
+                                    </div>
+                                </td>
+                                <td class="text-center pe-3">${performanceBadge}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No technician data available for the selected period</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading technician metrics:', error);
+                const tbody = document.querySelector('#technicianMetricsTable tbody');
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
+            });
+    }
+
+    // Refresh technician metrics button
+    document.getElementById('refreshTechnicianMetrics').addEventListener('click', function() {
+        loadTechnicianMetrics();
+    });
+
+    // Load technician metrics on page load
+    loadTechnicianMetrics();
 });
 </script>
 @endpush
 
 @push('styles')
 <style>
-.border-left-primary {
-    border-left: 0.25rem solid #4e73df !important;
-}
-.border-left-success {
-    border-left: 0.25rem solid #1cc88a !important;
-}
-.border-left-info {
-    border-left: 0.25rem solid #36b9cc !important;
-}
-.border-left-warning {
-    border-left: 0.25rem solid #f6c23e !important;
-}
-.border-left-danger {
-    border-left: 0.25rem solid #e74a3b !important;
-}
-
-.chart-area, .chart-pie, .chart-bar {
+/* Chart Containers */
+.chart-container {
     position: relative;
     height: 300px;
+    width: 100%;
 }
 
-.badge-open, .badge-info { background-color: #17a2b8; }
-.badge-in_progress, .badge-warning { background-color: #ffc107; color: #212529; }
-.badge-assigned, .badge-primary { background-color: #007bff; }
-.badge-pending, .badge-secondary { background-color: #6c757d; }
-.badge-escalated, .badge-danger { background-color: #dc3545; }
-.badge-closed, .badge-resolved, .badge-success { background-color: #28a745; }
+.chart-container-pie {
+    position: relative;
+    height: 250px;
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
 
-.badge-low { background-color: #28a745; }
-.badge-medium { background-color: #17a2b8; }
-.badge-high { background-color: #ffc107; color: #212529; }
-.badge-critical, .badge-urgent { background-color: #dc3545; }
+.chart-container-wide {
+    position: relative;
+    height: 250px;
+    width: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .chart-container {
+        height: 250px;
+    }
+    
+    .chart-container-pie {
+        height: 200px;
+        max-width: 250px;
+    }
+    
+    .chart-container-wide {
+        height: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .h4 {
+        font-size: 1.25rem;
+    }
+    
+    .small {
+        font-size: 0.75rem;
+    }
+}
+
+/* Card enhancements */
+.card {
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.25rem;
+}
+
+/* Table improvements */
+.table th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-bottom: 2px solid #dee2e6;
+    padding: 0.75rem;
+}
+
+.table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+/* Badge styles */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.375em 0.75em;
+}
+
+/* Loading state */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Progress bar improvements */
+.progress {
+    height: 1.25rem;
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+}
+
+.progress-bar {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+}
+
+/* Icon improvements */
+.fa-2x {
+    font-size: 1.75em !important;
+}
+
+/* Custom utility classes */
+.opacity-75 {
+    opacity: 0.75;
+}
+
+.border-4 {
+    border-width: 4px !important;
+}
+
+/* Dropdown improvements */
+.dropdown-menu {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 0.375rem;
+}
+
+.dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 991.98px) {
+    .container-fluid {
+        padding: 0.75rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .h3 {
+        font-size: 1.5rem;
+    }
+    
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+}
 </style>
 @endpush

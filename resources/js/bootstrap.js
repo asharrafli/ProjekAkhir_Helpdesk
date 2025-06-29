@@ -25,7 +25,7 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  window.Echo = new Echo({
     broadcaster: 'pusher',
     key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'mt1',
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'ap1',
     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
     encrypted: true,
     authorizer: (channel, options) => {
@@ -34,11 +34,19 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
                 axios.post('/broadcasting/auth', {
                     socket_id: socketId,
                     channel_name: channel.name
+                }, {
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
                 })
                 .then(response => {
+                    console.log('✅ Broadcasting auth successful for channel:', channel.name);
                     callback(false, response.data);
                 })
                 .catch(error => {
+                    console.error('❌ Broadcasting auth failed for channel:', channel.name, error.response?.data || error.message);
                     callback(true, error);
                 });
             }

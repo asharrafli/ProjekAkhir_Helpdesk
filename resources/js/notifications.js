@@ -128,15 +128,19 @@ class NotificationManager {
             });
 
         // Listen for private notifications (user-specific)
-        if (window.userId) {
-            const privateChannel = window.Echo.private(`user.${window.userId}`);
+        const userId = document.querySelector('meta[name="user-id"]')?.getAttribute('content');
+        if (userId) {
+            console.log('🔍 Setting up private channel for user ID:', userId);
+            
+            // Use the correct channel name format that matches Laravel's default
+            const privateChannel = window.Echo.private(`App.Models.User.${userId}`);
             
             privateChannel.subscribed(() => {
-                console.log(`✅ Successfully subscribed to private user.${window.userId} channel`);
+                console.log(`✅ Successfully subscribed to private App.Models.User.${userId} channel`);
             });
 
             privateChannel.error((error) => {
-                console.error(`❌ Error subscribing to private user.${window.userId} channel:`, error);
+                console.error(`❌ Error subscribing to private App.Models.User.${userId} channel:`, error);
             });
 
             privateChannel.notification((notification) => {
@@ -144,7 +148,7 @@ class NotificationManager {
                     this.handlePrivateNotification(notification);
                 });
         } else {
-            console.warn('⚠️ No userId found, private notifications will not work');
+            console.warn('⚠️ No userId found in meta tag, private notifications will not work');
         }
     }
 
@@ -392,7 +396,10 @@ class NotificationManager {
         const titles = {
             'ticket_created': 'New Ticket',
             'ticket_assigned': 'Ticket Assigned',
-            'ticket_status_changed': 'Status Changed'
+            'ticket_status_changed': 'Status Changed',
+            'App\\Notifications\\TicketCreated': 'New Ticket',
+            'App\\Notifications\\TicketAssigned': 'Ticket Assigned',
+            'App\\Notifications\\TicketStatusChanged': 'Status Changed'
         };
         return titles[type] || 'Notification';
     }

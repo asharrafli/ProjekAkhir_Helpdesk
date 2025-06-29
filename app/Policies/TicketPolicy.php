@@ -17,9 +17,9 @@ class TicketPolicy
             return true;
         }
 
-        // Technicians can view assigned tickets
-        if ($user->hasRole('technician') && $ticket->assigned_to === $user->id) {
-            return true;
+        // Technicians can only view tickets assigned to them
+        if ($user->hasRole('technician')) {
+            return $ticket->assigned_to === $user->id;
         }
 
         // Users can view their own tickets
@@ -38,9 +38,9 @@ class TicketPolicy
             return true;
         }
 
-        // Technicians can update assigned tickets
-        if ($user->hasRole('technician') && $ticket->assigned_to === $user->id) {
-            return true;
+        // Technicians can only update tickets assigned to them
+        if ($user->hasRole('technician') && $user->can('edit-tickets')) {
+            return $ticket->assigned_to === $user->id;
         }
 
         // Users can only update their own open tickets

@@ -298,7 +298,246 @@
                     }
                 });
             }
+
+            // Initialize notification system
+            initializeNotifications();
         });
+
+        function initializeNotifications() {
+            // Debug Pusher connection
+            console.log('Initializing notifications...');
+            console.log('Echo available:', !!window.Echo);
+            
+            if (window.Echo) {
+                console.log('Pusher state:', window.Echo.connector.pusher.connection.state);
+                
+                // Listen for connection events
+                window.Echo.connector.pusher.connection.bind('connected', function() {
+                    console.log('Pusher connected successfully!');
+                });
+                
+                window.Echo.connector.pusher.connection.bind('disconnected', function() {
+                    console.log('Pusher disconnected');
+                });
+                
+                window.Echo.connector.pusher.connection.bind('error', function(err) {
+                    console.error('Pusher connection error:', err);
+                });
+            }
+            
+            // Load unread notifications count
+            loadUnreadCount();
+            
+            // Load notifications when dropdown is opened
+            const notificationBell = document.getElementById('notificationBell');
+            if (notificationBell) {
+                notificationBell.addEventListener('click', function() {
+                    loadNotifications();
+                });
+            }
+            
+            // Listen for new notifications via Pusher
+            @auth
+            if (window.Echo) {
+                console.log('Setting up private channel for user {{ Auth::id() }}');
+                
+                // Test both channel names
+                window.Echo.private(`App.Models.User.{{ Auth::id() }}`)
+                    .notification((notification) => {
+                        console.log('New notification received (App.Models.User):', notification);
+                        showToast(notification.message || 'You have a new notification!');
+                        loadUnreadCount();
+                        updateNotificationDropdown(notification);
+                    });
+                
+                // Also try listening to public tickets channel
+                window.Echo.channel('tickets')
+                    .listen('.ticket.created', (e) => {
+                        console.log('Ticket created event received:', e);
+                        showToast('New ticket created: ' + e.message);
+                        loadUnreadCount();
+                    });
+            } else {
+                console.error('Echo is not available. Check if Pusher is loaded correctly.');
+            }
+            @endauth
+            
+            // Refresh notifications every 30 seconds
+            setInterval(loadUnreadCount, 30000);
+        }
+
+        function loadUnreadCount() {
+            fetch('{{ route("notifications.unread-count") }}', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('unreadBadge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading unread count:', error);
+            });
+        }
+
+        function loadNotifications() {
+            fetch('{{ route("notifications.index") }}', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                updateNotificationList(data.notifications || []);
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                document.getElementById('notificationDropdown').innerHTML = 
+                    '<li><span class="dropdown-item-text text-danger">Error loading notifications</span></li>';
+            });
+        }
+
+        function updateNotificationList(notifications) {
+            const dropdown = document.getElementById('notificationDropdown');
+            if (!dropdown) return;
+
+            if (notifications.length === 0) {
+                dropdown.innerHTML = '<li><span class="dropdown-item-text text-muted">No notifications</span></li>';
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(notification => {
+                const isUnread = !notification.read_at;
+                const data = notification.data || {};
+                
+                html += `
+                    <li>
+                        <a class="dropdown-item ${isUnread ? 'fw-bold bg-light' : ''}" href="#" onclick="markAsRead('${notification.id}')">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-bell me-2 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <div class="small">${data.message || 'New notification'}</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">
+                                        ${formatTimeAgo(notification.created_at)}
+                                    </div>
+                                </div>
+                                ${isUnread ? '<span class="badge bg-primary rounded-pill">New</span>' : ''}
+                            </div>
+                        </a>
+                    </li>
+                `;
+            });
+
+            html += `
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-center" href="#" onclick="markAllAsRead()">Mark all as read</a></li>
+            `;
+
+            dropdown.innerHTML = html;
+        }
+
+        function updateNotificationDropdown(newNotification) {
+            // Add new notification to the top of dropdown if it's open
+            const dropdown = document.getElementById('notificationDropdown');
+            if (dropdown && dropdown.classList.contains('show')) {
+                loadNotifications(); // Reload all notifications
+            }
+        }
+
+        function markAsRead(notificationId) {
+            fetch(`{{ url('notifications') }}/${notificationId}/read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadUnreadCount();
+                    loadNotifications();
+                }
+            })
+            .catch(error => console.error('Error marking notification as read:', error));
+        }
+
+        function markAllAsRead() {
+            fetch('{{ route("notifications.mark-all-read") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadUnreadCount();
+                    loadNotifications();
+                    showToast('All notifications marked as read');
+                }
+            })
+            .catch(error => console.error('Error marking all as read:', error));
+        }
+
+        function showToast(message) {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.className = 'position-fixed top-0 end-0 p-3';
+                toastContainer.style.zIndex = '9999';
+                document.body.appendChild(toastContainer);
+            }
+
+            // Create toast
+            const toast = document.createElement('div');
+            toast.className = 'toast show align-items-center text-white bg-primary border-0';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi bi-bell-fill me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Remove toast after 5 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+
+        function formatTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+
+            if (diffInSeconds < 60) return 'Just now';
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+            return `${Math.floor(diffInSeconds / 86400)}d ago`;
+        }
     </script>
 </body>
 </html>

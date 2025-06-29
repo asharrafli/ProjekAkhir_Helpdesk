@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\TicketCreated;
+use App\Events\TestEvent;
 use App\Models\Tickets;
 use App\Models\User;
 use App\Notifications\TicketCreated as TicketCreatedNotification;
@@ -82,35 +83,47 @@ class TestNotificationController extends Controller
     }
 
     /**
-     * Test Pusher connection
+     * Test Pusher connection by firing a simple test event
      */
     public function testPusher()
     {
         try {
-            $pusher = app('pusher');
-            
-            // Test simple broadcast
-            $result = $pusher->trigger('test-channel', 'test-event', [
+            Log::info('Starting Pusher connection test...');
+
+            // Check if broadcasting is properly configured
+            $broadcastDriver = config('broadcasting.default');
+            if ($broadcastDriver !== 'pusher') {
+                throw new \Exception("Broadcasting driver is '{$broadcastDriver}', expected 'pusher'");
+            }
+
+            // Test by creating a test event
+            $testData = [
                 'message' => 'Pusher connection test successful!',
                 'timestamp' => now()->toDateTimeString(),
                 'user' => auth()->user()->email
-            ]);
+            ];
 
-            Log::info('Pusher test result:', ['result' => $result]);
+            // Fire the test event
+            event(new TestEvent($testData));
+
+            Log::info('Pusher test event dispatched successfully', $testData);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Pusher test completed',
-                'result' => $result
+                'message' => 'Pusher test completed - check your Pusher dashboard for the test-channel event',
+                'test_data' => $testData,
+                'broadcast_driver' => $broadcastDriver
             ]);
 
         } catch (\Exception $e) {
             Log::error('Pusher test failed:', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
 
             return response()->json([
+                'success' => false,
                 'error' => 'Pusher test failed: ' . $e->getMessage()
             ], 500);
         }
@@ -130,20 +143,74 @@ class TestNotificationController extends Controller
             'pusher_encrypted' => config('broadcasting.connections.pusher.options.useTLS'),
         ];
 
-        // Check if we can create a Pusher instance
+        // Check if we can create a broadcasting instance
         $pusher_status = 'unknown';
         try {
-            $pusher = app('pusher');
-            $pusher_status = 'connected';
+            $broadcaster = app('Illuminate\Broadcasting\BroadcastManager');
+            $pusherDriver = $broadcaster->driver('pusher');
+            $pusher_status = 'broadcasting driver loaded';
         } catch (\Exception $e) {
             $pusher_status = 'error: ' . $e->getMessage();
         }
+
+        // Check notifications count
+        $user = auth()->user();
+        $totalNotifications = $user->notifications()->count();
+        $unreadNotifications = $user->unreadNotifications()->count();
 
         return response()->json([
             'broadcasting_config' => $config,
             'pusher_status' => $pusher_status,
             'current_user' => auth()->user()->email,
+            'notifications_count' => $totalNotifications,
+            'unread_count' => $unreadNotifications,
             'timestamp' => now()->toDateTimeString()
         ]);
+    }
+
+    /**
+     * Create a test notification directly in database
+     */
+    public function createTestNotification()
+    {
+        try {
+            $user = auth()->user();
+            
+            // Get or create a ticket for testing
+            $ticket = \App\Models\Tickets::first();
+            if (!$ticket) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No tickets found. Please create a ticket first to test notifications.'
+                ], 404);
+            }
+            
+            // Create a test notification directly
+            $user->notify(new \App\Notifications\TicketCreated($ticket));
+
+            Log::info('Test notification created for user:', [
+                'user_id' => $user->id,
+                'ticket_id' => $ticket->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Test notification created and saved to database',
+                'ticket_number' => $ticket->ticket_number,
+                'total_notifications' => $user->notifications()->count(),
+                'unread_notifications' => $user->unreadNotifications()->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create test notification:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

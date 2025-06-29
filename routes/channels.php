@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Broadcast;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +16,12 @@ use App\Models\User;
 */
 
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+    Log::info('Broadcasting Auth Check', [
+        'user' => $user ? $user->id : 'null',
+        'channel_id' => $id,
+        'authorized' => $user && (int) $user->id === (int) $id
+    ]);
+    return $user && (int) $user->id === (int) $id;
 });
 
 // Allow authenticated users to access the tickets channel

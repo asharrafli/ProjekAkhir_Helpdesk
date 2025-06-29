@@ -165,10 +165,9 @@
         </div>
     </div>
 
-    <!-- System Overview -->
+    <!-- Recent Activities -->
     <div class="row">
-        <div class="col-md-8">
-            <!-- Recent Activities -->
+        <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Recent Activities</h5>
@@ -197,35 +196,6 @@
                     @else
                         <p class="text-muted text-center">No recent activities</p>
                     @endif
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <!-- System Info -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">System Overview</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>Categories</span>
-                            <span class="badge bg-secondary">{{ $stats['total_categories'] }}</span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>Roles</span>
-                            <span class="badge bg-secondary">{{ $stats['total_roles'] }}</span>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between">
-                            <span>System Status</span>
-                            <span class="badge bg-success">Online</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

@@ -32,8 +32,6 @@ class Dashboard extends Component
             'tickets_today' => Tickets::whereDate('created_at', today())->count(),
             'tickets_this_week' => Tickets::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'tickets_this_month' => Tickets::whereMonth('created_at', now()->month)->count(),
-            'total_categories' => TicketCategory::count(),
-            'total_roles' => Role::count(),
             'recent_activities' => Activity::latest()->limit(10)->get(),
         ];
     }

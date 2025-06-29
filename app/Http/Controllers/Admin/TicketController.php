@@ -540,18 +540,25 @@ class TicketController extends Controller
 
     private function sendTicketCreatedNotifications(Tickets $ticket)
     {
+        Log::info('Sending ticket created notifications for ticket: ' . $ticket->id);
+        
         // Notify assigned technician if ticket is assigned
         if ($ticket->assigned_to) {
+            Log::info('Notifying assigned technician: ' . $ticket->assigned_to);
             $ticket->assignedTo->notify(new \App\Notifications\TicketCreated($ticket));
         }
         
         // Notify all managers and admins
         $managers = User::role(['manager', 'admin', 'super-admin'])->get();
+        Log::info('Notifying managers/admins: ' . $managers->count() . ' users');
         Notification::send($managers, new \App\Notifications\TicketCreated($ticket));
         
         // Notify all technicians about new ticket (they might want to claim it)
         $technicians = User::role('technician')->get();
+        Log::info('Notifying technicians: ' . $technicians->count() . ' users');
         Notification::send($technicians, new \App\Notifications\TicketCreated($ticket));
+        
+        Log::info('Finished sending ticket created notifications');
     }
 
     private function sendTicketAssignedNotifications(Tickets $ticket)
