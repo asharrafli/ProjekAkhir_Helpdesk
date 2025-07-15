@@ -1,407 +1,318 @@
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
-
-window.Pusher = Pusher;
-
-// Laravel Echo is already initialized in bootstrap.js
-// We'll use the existing window.Echo instance
+import axios from 'axios';
 
 class NotificationManager {
     constructor() {
+        console.log('🔔 NotificationManager initialized');
         this.notifications = [];
-        this.unreadCount = 0;
+        this.isConnected = false;
         this.init();
     }
 
     init() {
-        this.setupEventListeners();
-        // Add delay before first load to prevent immediate redirect issues
-        setTimeout(() => {
-            this.loadUnreadNotifications();
-        }, 2000);
-        this.setupRealtimeListeners();
+        this.loadNotifications();
+        this.setupEcho();
+        this.setupUI();
+        console.log('🔔 NotificationManager setup complete');
     }
 
-    setupEventListeners() {
-        // Mark notification as read when clicked
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.notification-item[data-notification-id]')) {
-                const notificationId = e.target.closest('.notification-item').dataset.notificationId;
-                this.markAsRead(notificationId);
+    async setupEcho() {
+        try {
+            // Import Echo dan Pusher secara dynamic
+            const { default: Echo } = await import('laravel-echo');
+            const { default: Pusher } = await import('pusher-js');
+
+            window.Pusher = Pusher;
+
+            // Setup Echo dengan konfigurasi yang tepat
+            window.Echo = new Echo({
+                broadcaster: 'pusher',
+                key: import.meta.env.VITE_PUSHER_APP_KEY || '93a2ffb34b52d8bd9fb5',
+                cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'ap1',
+                forceTLS: true,
+                encrypted: true,
+                authorizer: (channel, options) => {
+                    return {
+                        authorize: (socketId, callback) => {
+                            axios.post('/broadcasting/auth', {
+                                socket_id: socketId,
+                                channel_name: channel.name
+                            }, {
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json'
+                                }
+                            })
+                            .then(response => {
+                                callback(false, response.data);
+                            })
+                            .catch(error => {
+                                console.error('Broadcasting auth error:', error);
+                                callback(true, error);
+                            });
+                        }
+                    };
+                },
+            });
+
+            // Setup connection listeners
+            this.setupConnectionListeners();
+            
+            // Setup broadcast listeners
+            this.setupBroadcastListeners();
+            
+            console.log('✅ Echo setup complete');
+        } catch (error) {
+            console.error('❌ Failed to setup Echo:', error);
+            this.isConnected = false;
+        }
+    }
+
+    setupConnectionListeners() {
+        if (window.Echo && window.Echo.connector) {
+            window.Echo.connector.pusher.connection.bind('connected', () => {
+                this.isConnected = true;
+                console.log('✅ NotificationManager: Pusher connected');
+            });
+
+            window.Echo.connector.pusher.connection.bind('disconnected', () => {
+                this.isConnected = false;
+                console.log('❌ NotificationManager: Pusher disconnected');
+            });
+
+            window.Echo.connector.pusher.connection.bind('error', (error) => {
+                console.error('❌ NotificationManager: Pusher error:', error);
+                this.isConnected = false;
+            });
+        }
+    }
+
+    setupBroadcastListeners() {
+        if (!window.Echo) return;
+
+        try {
+            // Listen untuk ticket created events
+            window.Echo.channel('tickets')
+                .listen('.ticket.created', (e) => {
+                    console.log('🎯 Received ticket.created event:', e);
+                    this.handleTicketCreated(e);
+                });
+
+            // Listen untuk private user notifications
+            if (window.Laravel && window.Laravel.user) {
+                window.Echo.private(`App.Models.User.${window.Laravel.user.id}`)
+                    .notification((notification) => {
+                        console.log('🎯 Received private notification:', notification);
+                        this.handlePrivateNotification(notification);
+                    });
             }
-        });
-
-        // Mark all as read button
-        const markAllReadBtn = document.getElementById('markAllRead');
-        if (markAllReadBtn) {
-            markAllReadBtn.addEventListener('click', () => {
-                this.markAllAsRead();
-            });
-        }
-
-        // Notification dropdown toggle
-        const notificationBell = document.getElementById('notificationBell');
-        if (notificationBell) {
-            notificationBell.addEventListener('click', () => {
-                this.loadNotifications();
-            });
+                
+            console.log('✅ Broadcasting listeners setup complete');
+        } catch (error) {
+            console.error('❌ Failed to setup broadcast listeners:', error);
         }
     }
 
-    setupRealtimeListeners() {
-        // Add connection status logging
-        if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
-            const pusher = window.Echo.connector.pusher;
-            
-            pusher.connection.bind('connected', () => {
-                console.log('✅ Pusher connected successfully');
-            });
-            
-            pusher.connection.bind('disconnected', () => {
-                console.log('❌ Pusher disconnected');
-            });
-            
-            pusher.connection.bind('error', (error) => {
-                console.error('❌ Pusher connection error:', error);
-            });
-            
-            pusher.connection.bind('state', (state) => {
-                console.log('📡 Pusher connection state:', state);
-            });
-        }
-
-        // Listen for new ticket created - using public channel
-        const ticketsChannel = window.Echo.channel('tickets');
+    handleTicketCreated(eventData) {
+        console.log('🎫 Handling ticket created event:', eventData);
         
-        ticketsChannel.subscribed(() => {
-            console.log('✅ Successfully subscribed to tickets channel');
-        });
+        // Create notification object
+        const notification = {
+            id: `event_${Date.now()}`,
+            type: 'App\\Events\\TicketCreated',
+            data: {
+                ticket_id: eventData.ticket.id,
+                ticket_number: eventData.ticket.ticket_number,
+                title: 'New Ticket Created',
+                message: eventData.message,
+                type: eventData.type,
+                ticket: eventData.ticket
+            },
+            created_at: new Date().toISOString(),
+            read_at: null
+        };
 
-        ticketsChannel.error((error) => {
-            console.error('❌ Error subscribing to tickets channel:', error);
-        });
-
-        ticketsChannel.listen('.ticket.created', (e) => {
-                console.log('Received ticket.created event:', e);
-                this.showToast('New Ticket Created', e.message, 'info');
-                this.addNotification({
-                    type: 'ticket_created',
-                    message: e.message,
-                    data: e.ticket,
-                    read_at: null,
-                    created_at: new Date().toISOString()
-                });
-                this.playNotificationSound();
-                // Reload the unread count
-                this.loadUnreadNotifications();
-            });
-
-        // Listen for ticket assignments
-        ticketsChannel.listen('.ticket.assigned', (e) => {
-                console.log('Received ticket.assigned event:', e);
-                this.showToast('Ticket Assigned', e.message, 'warning');
-                this.addNotification({
-                    type: 'ticket_assigned',
-                    message: e.message,
-                    data: e.ticket,
-                    read_at: null,
-                    created_at: new Date().toISOString()
-                });
-                this.playNotificationSound();
-                // Reload the unread count
-                this.loadUnreadNotifications();
-            });
-
-        // Listen for status changes
-        ticketsChannel.listen('.ticket.status.changed', (e) => {
-                console.log('Received ticket.status.changed event:', e);
-                this.showToast('Ticket Status Changed', e.message, 'info');
-                this.addNotification({
-                    type: 'ticket_status_changed',
-                    message: e.message,
-                    data: e.ticket,
-                    read_at: null,
-                    created_at: new Date().toISOString()
-                });
-                // Reload the unread count
-                this.loadUnreadNotifications();
-            });
-
-        // Listen for private notifications (user-specific)
-        const userId = document.querySelector('meta[name="user-id"]')?.getAttribute('content');
-        if (userId) {
-            console.log('🔍 Setting up private channel for user ID:', userId);
-            
-            // Use the correct channel name format that matches Laravel's default
-            const privateChannel = window.Echo.private(`App.Models.User.${userId}`);
-            
-            privateChannel.subscribed(() => {
-                console.log(`✅ Successfully subscribed to private App.Models.User.${userId} channel`);
-            });
-
-            privateChannel.error((error) => {
-                console.error(`❌ Error subscribing to private App.Models.User.${userId} channel:`, error);
-            });
-
-            privateChannel.notification((notification) => {
-                    console.log('Received private notification:', notification);
-                    this.handlePrivateNotification(notification);
-                });
-        } else {
-            console.warn('⚠️ No userId found in meta tag, private notifications will not work');
-        }
+        this.addNotification(notification);
     }
 
     handlePrivateNotification(notification) {
-        const typeMap = {
-            'App\\Notifications\\TicketCreated': 'success',
-            'App\\Notifications\\TicketAssigned': 'warning',
-            'App\\Notifications\\TicketStatusChanged': 'info'
+        console.log('🔔 Handling private notification:', notification);
+        
+        // Format notification sesuai dengan struktur database
+        const formattedNotification = {
+            id: notification.id || `private_${Date.now()}`,
+            type: notification.type,
+            data: notification,
+            created_at: new Date().toISOString(),
+            read_at: null
         };
 
-        const type = typeMap[notification.type] || 'info';
-        this.showToast('Notification', notification.message || 'You have a new notification', type);
-        this.addNotification(notification);
-        this.playNotificationSound();
+        this.addNotification(formattedNotification);
     }
 
     addNotification(notification) {
+        console.log('➕ Adding notification:', notification);
+        
+        // Tambahkan ke array notifications
         this.notifications.unshift(notification);
-        if (!notification.read_at) {
-            this.unreadCount++;
-            this.updateUnreadBadge();
-        }
-        this.updateNotificationDropdown();
-    }
-
-    showToast(title, message, type = 'info') {
-        // Check if user has enabled browser notifications
-        if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(title, {
-                body: message,
-                icon: '/favicon.ico',
-                tag: 'ticket-notification'
-            });
-        }
-
-        // Show in-app toast
-        this.createToast(title, message, type);
-    }
-
-    createToast(title, message, type) {
-        const toastContainer = this.getOrCreateToastContainer();
-        const toast = document.createElement('div');
-        toast.className = `toast align-items-center text-white bg-${type} border-0`;
-        toast.setAttribute('role', 'alert');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <strong>${title}</strong><br>
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-
-        toastContainer.appendChild(toast);
         
-        // Show toast with simple fade effect
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s';
-        setTimeout(() => {
-            toast.style.opacity = '1';
-        }, 100);
-        
-        // Auto hide after 5 seconds
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.remove();
-                }
-            }, 300);
-        }, 5000);
-
-        // Add close button functionality
-        const closeBtn = toast.querySelector('.btn-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                toast.style.opacity = '0';
-                setTimeout(() => {
-                    if (toast.parentNode) {
-                        toast.remove();
-                    }
-                }, 300);
-            });
-        }
-    }
-
-    getOrCreateToastContainer() {
-        let container = document.getElementById('toastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toastContainer';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '9999';
-            document.body.appendChild(container);
-        }
-        return container;
-    }
-
-    playNotificationSound() {
-        const audio = new Audio('/sounds/notification.mp3');
-        audio.volume = 0.3;
-        audio.play().catch(() => {
-            // Ignore autoplay errors
+        // Sort ulang berdasarkan created_at
+        this.notifications.sort((a, b) => {
+            return new Date(b.created_at) - new Date(a.created_at);
         });
+        
+        // Update UI
+        this.updateNotificationUI();
+        this.updateNotificationCount(this.notifications.filter(n => !n.read_at).length);
+        
+        // Show toast notification
+        this.showToast(notification);
     }
 
-    loadUnreadNotifications() {
-        fetch('/notifications/unread-count', {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                this.unreadCount = data.count;
-                this.updateUnreadBadge();
-            })
-            .catch(error => console.error('Error loading unread count:', error));
-    }
-
-    loadNotifications() {
-        fetch('/notifications', {
-            method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                this.notifications = data.notifications;
-                this.updateNotificationDropdown();
-            })
-            .catch(error => console.error('Error loading notifications:', error));
-    }
-
-    markAsRead(notificationId) {
-        fetch(`/notifications/${notificationId}/read`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json',
-            },
-        })
-        .then(response => response.json())
-        .then(() => {
-            // Update local state
-            const notification = this.notifications.find(n => n.id === notificationId);
-            if (notification && !notification.read_at) {
-                notification.read_at = new Date().toISOString();
-                this.unreadCount = Math.max(0, this.unreadCount - 1);
-                this.updateUnreadBadge();
-                this.updateNotificationDropdown();
-            }
-        })
-        .catch(error => console.error('Error marking notification as read:', error));
-    }
-
-    markAllAsRead() {
-        fetch('/notifications/mark-all-read', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            },
-        })
-        .then(response => response.json())
-        .then(() => {
-            this.notifications.forEach(notification => {
-                notification.read_at = new Date().toISOString();
+    async loadNotifications() {
+        try {
+            const response = await fetch('/notifications');
+            const data = await response.json();
+            
+            this.notifications = (data.notifications || []).sort((a, b) => {
+                return new Date(b.created_at) - new Date(a.created_at);
             });
-            this.unreadCount = 0;
-            this.updateUnreadBadge();
-            this.updateNotificationDropdown();
-        })
-        .catch(error => console.error('Error marking all notifications as read:', error));
-    }
-
-    updateUnreadBadge() {
-        const badge = document.getElementById('unreadBadge');
-        if (badge) {
-            if (this.unreadCount > 0) {
-                badge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
-                badge.style.display = 'inline';
-            } else {
-                badge.style.display = 'none';
-            }
+            
+            this.updateNotificationUI();
+            this.updateNotificationCount(data.unread_count || 0);
+            
+            console.log('📱 Loaded notifications:', this.notifications.length);
+        } catch (error) {
+            console.error('❌ Error loading notifications:', error);
+            this.showErrorInDropdown();
         }
     }
 
-    updateNotificationDropdown() {
-        const dropdown = document.getElementById('notificationDropdown');
-        if (!dropdown) return;
+    updateNotificationUI() {
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        if (!notificationDropdown) return;
+
+        // Show connection status
+        const connectionStatus = this.isConnected ? 
+            '<small class="text-success">🟢 Live</small>' : 
+            '<small class="text-warning">🟡 Offline</small>';
 
         if (this.notifications.length === 0) {
-            dropdown.innerHTML = '<li><span class="dropdown-item-text text-muted">No notifications</span></li>';
+            notificationDropdown.innerHTML = `
+                <li>
+                    <div class="dropdown-header d-flex justify-content-between align-items-center">
+                        <span>Notifications ${connectionStatus}</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">Mark All Read</button>
+                    </div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li><span class="dropdown-item-text text-muted">No notifications</span></li>
+            `;
             return;
         }
 
-        const items = this.notifications.slice(0, 10).map(notification => {
-            const isRead = notification.read_at !== null;
-            const timeAgo = this.formatTimeAgo(notification.created_at);
+        let html = `
+            <li>
+                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                    <span>Notifications ${connectionStatus}</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">Mark All Read</button>
+                </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+        `;
+
+        this.notifications.slice(0, 10).forEach(notification => {
+            const data = notification.data || notification;
+            const isUnread = !notification.read_at;
             
-            return `
+            html += `
                 <li>
-                    <a class="dropdown-item notification-item ${isRead ? '' : 'bg-light'}" 
-                       href="#" 
-                       data-notification-id="${notification.id}">
+                    <a class="dropdown-item ${isUnread ? 'fw-bold bg-light' : ''}" href="#" onclick="markAsRead('${notification.id}')">
                         <div class="d-flex align-items-start">
+                            <i class="bi bi-ticket-perforated me-2 mt-1 text-primary"></i>
                             <div class="flex-grow-1">
-                                <div class="fw-bold">${this.getNotificationTitle(notification.type)}</div>
-                                <div class="small text-muted">${notification.message || notification.data?.message || ''}</div>
-                                <div class="small text-muted">${timeAgo}</div>
+                                <div class="small">${data.title || 'New Notification'}</div>
+                                <div class="text-muted small">${data.message || 'You have a new notification'}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">
+                                    ${this.formatTimeAgo(notification.created_at)}
+                                </div>
                             </div>
-                            ${!isRead ? '<div class="badge bg-primary rounded-pill">New</div>' : ''}
+                            ${isUnread ? '<span class="badge bg-primary rounded-pill">New</span>' : ''}
                         </div>
                     </a>
                 </li>
             `;
-        }).join('');
+        });
 
-        const markAllButton = this.unreadCount > 0 ? `
+        html += `
             <li><hr class="dropdown-divider"></li>
-            <li><button class="dropdown-item text-center" id="markAllRead">Mark all as read</button></li>
-        ` : '';
+            <li><a class="dropdown-item text-center" href="#" onclick="markAllAsRead()">Mark all as read</a></li>
+        `;
 
-        dropdown.innerHTML = items + markAllButton;
+        notificationDropdown.innerHTML = html;
     }
 
-    getNotificationTitle(type) {
-        const titles = {
-            'ticket_created': 'New Ticket',
-            'ticket_assigned': 'Ticket Assigned',
-            'ticket_status_changed': 'Status Changed',
-            'App\\Notifications\\TicketCreated': 'New Ticket',
-            'App\\Notifications\\TicketAssigned': 'Ticket Assigned',
-            'App\\Notifications\\TicketStatusChanged': 'Status Changed'
-        };
-        return titles[type] || 'Notification';
+    updateNotificationCount(count) {
+        const unreadBadge = document.getElementById('unreadBadge');
+        if (unreadBadge) {
+            if (count > 0) {
+                unreadBadge.textContent = count;
+                unreadBadge.style.display = 'inline-block';
+            } else {
+                unreadBadge.style.display = 'none';
+            }
+        }
+    }
+
+    showToast(notification) {
+        const data = notification.data || notification;
+        const title = data.title || 'New Notification';
+        const message = data.message || 'You have a new notification';
+        
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '9999';
+            document.body.appendChild(toastContainer);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = 'toast show align-items-center text-white bg-primary border-0';
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi bi-bell-fill me-2"></i>
+                    <strong>${title}</strong><br>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    showErrorInDropdown() {
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        if (notificationDropdown) {
+            notificationDropdown.innerHTML = `
+                <li>
+                    <div class="dropdown-header">
+                        <span>Notifications</span>
+                    </div>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li><span class="dropdown-item-text text-danger">Error loading notifications</span></li>
+            `;
+        }
     }
 
     formatTimeAgo(dateString) {
@@ -415,20 +326,62 @@ class NotificationManager {
         return `${Math.floor(diffInSeconds / 86400)}d ago`;
     }
 
-    // Request notification permission
-    requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
+    setupUI() {
+        const notificationBell = document.getElementById('notificationBell');
+        if (notificationBell) {
+            notificationBell.addEventListener('click', () => {
+                this.loadNotifications();
+            });
         }
     }
 }
 
-// Initialize notification manager when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.notificationManager = new NotificationManager();
-    
-    // Request notification permission
-    if ('Notification' in window) {
-        window.notificationManager.requestNotificationPermission();
+// Global functions
+window.markAsRead = async function(notificationId) {
+    if (notificationId.startsWith('event_') || notificationId.startsWith('private_')) {
+        window.notificationManager.loadNotifications();
+        return;
     }
+    
+    try {
+        const response = await fetch(`/notifications/${notificationId}/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        if (response.ok) {
+            window.notificationManager.loadNotifications();
+        }
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+};
+
+window.markAllAsRead = async function() {
+    try {
+        const response = await fetch('/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        if (response.ok) {
+            window.notificationManager.loadNotifications();
+        }
+    } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+    }
+};
+
+// Auto-initialize
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded, initializing NotificationManager...');
+    window.notificationManager = new NotificationManager();
 });
+
+export default NotificationManager;

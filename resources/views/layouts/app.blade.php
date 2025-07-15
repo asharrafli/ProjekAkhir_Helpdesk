@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- CSRF Token -->
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+     <meta name="csrf-token" content="{{ csrf_token() }}">
     @auth
-    <meta name="user-id" content="{{ Auth::id() }}">
+    <meta name="user-id" content="{{ auth()->id() }}">
+    <meta name="user-name" content="{{ auth()->user()->name }}">
     @endauth
 
     <title>{{ config('app.name', 'Laravel') }}</title>
@@ -199,6 +200,13 @@
                         </span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                        <li>
+                            <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                <span>Notifications</span>
+                                <button class="btn btn-sm btn-outline-primary" data-action="mark-all-read">Mark All Read</button>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
                         <li><span class="dropdown-item-text text-muted">Loading notifications...</span></li>
                     </ul>
                 </div>
@@ -226,6 +234,9 @@
                 <a href="{{ route('profile') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-gear"></i> Settings
                 </a>
+                <button onclick="testNotification()" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-bell"></i> Test Notification
+                </button>
                 <form method="POST" action="{{ route('logout') }}" class="d-inline">
                     @csrf
                     <button type="submit" class="btn btn-outline-danger btn-sm w-100">
@@ -283,7 +294,7 @@
     
     <!-- Notifications will be loaded via Vite in app.js -->
     
-    <script>
+    {{-- <script>
         // Initialize sortable for stats cards
         document.addEventListener('DOMContentLoaded', function() {
             const statsContainer = document.getElementById('stats-container');
@@ -538,6 +549,86 @@
             if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
             return `${Math.floor(diffInSeconds / 86400)}d ago`;
         }
+    </script> --}}
+    @auth
+    <script>
+        window.Laravel = {
+            user: {
+                id: {{ auth()->id() }},
+                name: "{{ auth()->user()->name }}",
+                email: "{{ auth()->user()->email }}",
+                roles: @json(auth()->user()->getRoleNames()),
+            }
+        };
+        
+        // Debug log
+        console.log('✅ Laravel user set:', window.Laravel.user);
     </script>
+    @endauth
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize notification manager
+            if (typeof NotificationManager !== 'undefined') {
+                window.notificationManager = new NotificationManager();
+                console.log('✅ NotificationManager initialized and available globally');
+                
+                // Debug Pusher connection
+                if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+                    console.log('Pusher connection state:', window.Echo.connector.pusher.connection.state);
+                    
+                    window.Echo.connector.pusher.connection.bind('connected', () => {
+                        console.log('✅ Pusher connected successfully');
+                    });
+                    
+                    window.Echo.connector.pusher.connection.bind('error', (err) => {
+                        console.error('❌ Pusher connection error:', err);
+                    });
+                }
+            } else {
+                console.warn('⚠️ NotificationManager not found - check if notifications.js is loaded');
+            }
+        });
+
+        // Make notification functions available globally
+        window.showNotificationToast = function(title, message, type = 'info') {
+            if (window.notificationManager) {
+                window.notificationManager.showToast(title, message, type);
+            } else {
+                console.warn('NotificationManager not available');
+            }
+        };
+
+        // Test notification function
+        window.testNotification = function() {
+            if (window.notificationManager) {
+                // Show local toast first
+                window.notificationManager.showToast('Test Notification', 'This is a test notification from the system.', 'success');
+                
+                // Also trigger backend notification
+                fetch('/admin/test/trigger-notification', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Backend notification triggered:', data.message);
+                    } else {
+                        console.error('❌ Backend notification failed:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error triggering backend notification:', error);
+                });
+            } else {
+                alert('NotificationManager not available');
+            }
+        };
+    </script>
+
+
 </body>
 </html>

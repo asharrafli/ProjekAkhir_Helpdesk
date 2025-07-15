@@ -12,7 +12,11 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(./vendor/bin/pint)",
-      "Bash(./vendor/bin/sail artisan migrate:status)"
+      "Bash(./vendor/bin/sail artisan migrate:status)",
+      "Bash(rg:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "mcp__sequential-thinking__sequentialthinking"
     ],
     "deny": []
   }

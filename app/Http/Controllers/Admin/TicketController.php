@@ -14,12 +14,14 @@ use App\Events\TicketStatusChanged;
 use App\Notifications\TicketCreated as TicketCreatedNotification;
 use App\Notifications\TicketAssigned as TicketAssignedNotification;
 use App\Notifications\TicketStatusChanged as TicketStatusChangedNotification;
+use App\Notifications\TicketCreatedConfirmation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 class TicketController extends Controller
 {
@@ -101,41 +103,58 @@ class TicketController extends Controller
             'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,pdf,doc,docx,txt,zip|max:10240',
         ]);
 
-        $ticket = Tickets::create([
-            'ticket_number' => 'TKT-' . time(),
-            'user_id' => $this->getCurrentUserId(),
-            'category_id' => $request->category_id,
-            'subcategory_id' => $request->subcategory_id,
-            'title' => $request->title,
-            'title_ticket' => $request->title, // Copy value from title to title_ticket
-            'description_ticket' => $request->description_ticket,
-            'priority' => $request->priority,
-            'assigned_to' => $request->assigned_to,
-            'status' => $request->assigned_to ? 'assigned' : 'open',
-            'last_activity_at' => now(),
-        ]);
+        DB::beginTransaction();
+        try {
+            // Create ticket
+            $ticket = Tickets::create([
+                'ticket_number' => 'TKT-' . time(),
+                'user_id' => $this->getCurrentUserId(),
+                'category_id' => $request->category_id,
+                'subcategory_id' => $request->subcategory_id,
+                'title' => $request->title,
+                'title_ticket' => $request->title, // Copy value from title to title_ticket
+                'description_ticket' => $request->description_ticket,
+                'priority' => $request->priority,
+                'assigned_to' => $request->assigned_to,
+                'status' => $request->assigned_to ? 'assigned' : 'open',
+                'last_activity_at' => now(),
+            ]);
 
-        // Handle file attachments
-        if ($request->hasFile('attachments')) {
-            foreach ($request->file('attachments') as $file) {
-                $this->storeAttachment($ticket, $file);
+            // Handle file attachments
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $this->storeAttachment($ticket, $file);
+                }
             }
+
+            // ✅ Dispatch event for broadcast
+            event(new TicketCreated($ticket));
+            
+            // ✅ Send notifications to admins/managers directly
+            $this->sendTicketCreatedNotifications($ticket);
+            
+            Log::info('🎫 New ticket created and notifications sent', [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'user_id' => $this->getCurrentUserId()
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('tickets.index')
+                ->with('success', 'Ticket created successfully!');
+                
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('❌ Ticket creation failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $this->getCurrentUserId()
+            ]);
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create ticket: ' . $e->getMessage());
         }
-
-        // Send notifications
-        $this->sendTicketCreatedNotifications($ticket);
-
-        // Broadcast event
-        event(new \App\Events\TicketCreated($ticket));
-
-        // If assigned, send assignment notification
-        if ($request->assigned_to) {
-            $this->sendTicketAssignedNotifications($ticket);
-            event(new \App\Events\TicketAssigned($ticket));
-        }
-
-        return redirect()->route('tickets.index')
-            ->with('success', 'Ticket created successfully!');
     }
 
     public function show(Tickets $ticket)
@@ -268,7 +287,7 @@ class TicketController extends Controller
 
             // Send notifications for status changes
             if ($oldStatus !== $ticket->status) {
-                event(new \App\Events\TicketStatusChanged($ticket, $oldStatus, $ticket->status));
+                event(new TicketStatusChanged($ticket, $oldStatus, $ticket->status));
             }
 
             return redirect()->route('tickets.show', $ticket)
@@ -414,14 +433,14 @@ class TicketController extends Controller
                             // Skip closed or resolved tickets
                             if (in_array($ticket->status, ['closed', 'resolved'])) {
                                 $failedCount++;
-                                continue;
+                                continue 2;
                             }
 
                             // Validate assigned user has proper role
                             $assignedUser = User::find($request->assigned_to);
                             if (!$assignedUser->hasAnyRole(['technician', 'admin', 'super-admin'])) {
                                 $failedCount++;
-                                continue;
+                                continue 2;
                             }
 
                             // Determine status based on who is assigning
@@ -538,38 +557,50 @@ class TicketController extends Controller
         ]);
     }
 
-    private function sendTicketCreatedNotifications(Tickets $ticket)
-    {
-        Log::info('Sending ticket created notifications for ticket: ' . $ticket->id);
-        
-        // Notify assigned technician if ticket is assigned
-        if ($ticket->assigned_to) {
-            Log::info('Notifying assigned technician: ' . $ticket->assigned_to);
-            $ticket->assignedTo->notify(new \App\Notifications\TicketCreated($ticket));
-        }
-        
-        // Notify all managers and admins
-        $managers = User::role(['manager', 'admin', 'super-admin'])->get();
-        Log::info('Notifying managers/admins: ' . $managers->count() . ' users');
-        Notification::send($managers, new \App\Notifications\TicketCreated($ticket));
-        
-        // Notify all technicians about new ticket (they might want to claim it)
-        $technicians = User::role('technician')->get();
-        Log::info('Notifying technicians: ' . $technicians->count() . ' users');
-        Notification::send($technicians, new \App\Notifications\TicketCreated($ticket));
-        
-        Log::info('Finished sending ticket created notifications');
-    }
+    /**
+     * Send notifications to admins and managers when ticket is created
+     */
+   
 
-    private function sendTicketAssignedNotifications(Tickets $ticket)
-    {
-        if ($ticket->assigned_to) {
-            $ticket->assignedTo->notify(new TicketAssignedNotification($ticket));
+     private function sendTicketCreatedNotifications($ticket)
+{
+    try {
+        // ✅ Notify ALL USERS - kirim notifikasi ke semua user yang aktif
+        $allUsers = User::whereNotNull('email_verified_at')->get();
+        
+        foreach ($allUsers as $user) {
+            $user->notify(new TicketCreatedNotification($ticket));
         }
         
-        // Notify ticket creator
-        $ticket->user->notify(new TicketAssignedNotification($ticket));
+        // ✅ Send confirmation to ticket creator
+        if ($ticket->user) {
+            $ticket->user->notify(new TicketCreatedConfirmation($ticket));
+        }
+        
+        // ✅ Notify assigned user if already assigned
+        if ($ticket->assigned_to) {
+            $assignedUser = User::find($ticket->assigned_to);
+            if ($assignedUser) {
+                $assignedUser->notify(new TicketAssignedNotification($ticket));
+            }
+        }
+        
+        Log::info('✅ Ticket notifications sent to ALL users', [
+            'ticket_id' => $ticket->id,
+            'ticket_number' => $ticket->ticket_number,
+            'total_users_notified' => $allUsers->count(),
+            'creator_id' => $ticket->user_id,
+            'assigned_to' => $ticket->assigned_to
+        ]);
+        
+    } catch (\Exception $e) {
+        Log::error('❌ Failed to send ticket notifications', [
+            'ticket_id' => $ticket->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
     }
+}
 
     /**
      * Store attachment for a ticket

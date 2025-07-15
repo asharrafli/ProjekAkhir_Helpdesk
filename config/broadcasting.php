@@ -28,21 +28,26 @@ return [
     |
     */
 
-    'connections' => [
 
+    'connections' => [
         'pusher' => [
             'driver' => 'pusher',
             'key' => env('PUSHER_APP_KEY'),
             'secret' => env('PUSHER_APP_SECRET'),
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
-                'cluster' => env('PUSHER_APP_CLUSTER'),
+                'cluster' => env('PUSHER_CLUSTER', 'ap1'),
+                'host' => env('PUSHER_HOST', 'api.pusherapp.com'),
+                'port' => env('PUSHER_PORT', 443),
+                'scheme' => env('PUSHER_SCHEME', 'https'),
+                'encrypted' => true,
                 'useTLS' => true,
             ],
             'client_options' => [
                 // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
             ],
         ],
+
 
         'ably' => [
             'driver' => 'ably',

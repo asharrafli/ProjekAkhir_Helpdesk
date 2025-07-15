@@ -6,6 +6,10 @@
         "build": "vite build",
         "dev": "vite"
     },
+    "overrides": {
+        "fresh": "^0.5.2",
+        "koa": "^2.16.1"
+    },
     "devDependencies": {
         "@popperjs/core": "^2.11.6",
         "@tailwindcss/vite": "^4.0.0",
@@ -19,7 +23,8 @@
     },
     "dependencies": {
         "chart.js": "^4.5.0",
-        "laravel-echo": "^2.1.6",
-        "pusher-js": "^8.4.0"
+        "laravel": "^0.0.1",
+        "laravel-echo": "^1.16.1",
+        "pusher-js": "^7.6.0"
     }
 }

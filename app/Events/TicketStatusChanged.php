@@ -10,6 +10,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Auth;
 
 class TicketStatusChanged implements ShouldBroadcast
 {
@@ -25,11 +26,15 @@ class TicketStatusChanged implements ShouldBroadcast
     {
         $channels = [
             new Channel('tickets'),
-            new PrivateChannel('user.' . $this->ticket->user_id),
         ];
 
+        // Add private channels for involved users
         if ($this->ticket->assigned_to) {
             $channels[] = new PrivateChannel('user.' . $this->ticket->assigned_to);
+        }
+
+        if ($this->ticket->user_id) {
+            $channels[] = new PrivateChannel('user.' . $this->ticket->user_id);
         }
 
         return $channels;
@@ -43,8 +48,7 @@ class TicketStatusChanged implements ShouldBroadcast
                 'ticket_number' => $this->ticket->ticket_number,
                 'title' => $this->ticket->title_ticket,
                 'old_status' => $this->oldStatus,
-                'new_status' => $this->newStatus,
-                'updated_by' => auth()->user()->name ?? 'System',
+                'updated_by' => Auth::user()->name ?? 'System',
             ],
             'message' => "Ticket #{$this->ticket->ticket_number} status changed from {$this->oldStatus} to {$this->newStatus}",
             'type' => 'ticket_status_changed',

@@ -21,11 +21,21 @@ class TicketAssigned implements ShouldBroadcast
 
     public function broadcastOn(): array
     {
-        return [
+         $channels = [
             new Channel('tickets'),
-            new PrivateChannel('user.' . $this->ticket->assigned_to),
-            new PrivateChannel('user.' . $this->ticket->user_id),
         ];
+
+        // Add private channel for assigned technician
+        if ($this->ticket->assigned_to) {
+            $channels[] = new PrivateChannel('user.' . $this->ticket->assigned_to);
+        }
+
+        // Add private channel for ticket creator
+        if ($this->ticket->user_id) {
+            $channels[] = new PrivateChannel('user.' . $this->ticket->user_id);
+        }
+
+        return $channels;
     }
 
     public function broadcastWith(): array
@@ -38,7 +48,7 @@ class TicketAssigned implements ShouldBroadcast
                 'priority' => $this->ticket->priority,
                 'status' => $this->ticket->status,
                 'assigned_to' => $this->ticket->assignedTo->name,
-                'assigned_by' => auth()->user()->name ?? 'System',
+                'assigned_by' => request()->user()->name ?? 'System',
             ],
             'message' => "Ticket #{$this->ticket->ticket_number} has been assigned to {$this->ticket->assignedTo->name}",
             'type' => 'ticket_assigned',

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
@@ -16,6 +17,10 @@ use App\Http\Controllers\Admin\SubcategoryController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TestNotificationController;
+use App\Http\Controllers\TestTicketController;
+use App\Http\Controllers\TestBroadcastController;
+use App\Models\Tickets;
+use Illuminate\Notifications\Events\NotificationSent;
 
 Route::get('/', function () {
     return view('welcome');
@@ -50,6 +55,86 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pusher', [TestNotificationController::class, 'testPusher'])->name('pusher');
         Route::get('/status', [TestNotificationController::class, 'status'])->name('status');
         Route::post('/create-notification', [TestNotificationController::class, 'createTestNotification'])->name('create-notification');
+        
+        // Test Broadcasting routes
+        Route::get('/broadcast-debug', [TestBroadcastController::class, 'testBroadcast'])->name('broadcast-debug');
+        Route::get('/pusher-test', [TestBroadcastController::class, 'testPusherConnection'])->name('pusher-test');
+        Route::get('/config-debug', [TestBroadcastController::class, 'debugBroadcastConfig'])->name('config-debug');
+        Route::get('/debug-dashboard', function () {
+            return view('test-broadcast-debug');
+        })->name('debug-dashboard');
+        Route::get('/trigger-notification', function () {
+            try {
+                $user = Auth::user();
+                
+                // Create a test notification
+                $notification = [
+                    'id' => time(),
+                    'title' => 'Test Notification',
+                    'message' => 'This is a test notification from the backend',
+                    'type' => 'success',
+                    'created_at' => now(),
+                    'read_at' => null,
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name
+                    ]
+                ];
+                
+                // Save to database
+                $user->notifications()->create([
+                    'id' => \Illuminate\Support\Str::uuid(),
+                    'type' => 'App\Notifications\TestNotification',
+                    'notifiable_type' => 'App\Models\User',
+                    'notifiable_id' => $user->id,
+                    'data' => json_encode($notification),
+                    'read_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+                
+                // ✅ Broadcast to GLOBAL channel - semua user dapat menerima
+                broadcast(new \App\Events\GlobalNotificationEvent($notification));
+                
+                // ✅ Broadcast to specific user channel
+                broadcast(new \App\Events\NotificationEvent($user, $notification));
+                
+                Log::info('✅ Test notification broadcasted to all channels', [
+                    'user_id' => $user->id,
+                    'notification_id' => $notification['id']
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Test notification created and broadcasted globally',
+                    'notification' => $notification
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('❌ Test notification failed', [
+                    'error' => $e->getMessage(),
+                    'line' => $e->getLine()
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        })->name('trigger-notification');
+        
+        Route::get('/local-notification', function () {
+            return response()->json([
+                'success' => true,
+                'notification' => [
+                    'id' => time(),
+                    'title' => 'Local Test Notification',
+                    'message' => 'This is a local test notification',
+                    'type' => 'info',
+                    'created_at' => now()
+                ]
+            ]);
+        })->name('local-notification');
     });
 
     // Ticket routes
@@ -72,7 +157,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Admin routes
     Route::prefix('admin')->name('admin.')->middleware(['can:view-admin-dashboard'])->group(function () {
-        
+
         // User management
         Route::prefix('users')->name('users.')->middleware(['can:view-users'])->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('index');
@@ -123,6 +208,7 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{subcategory}', [SubcategoryController::class, 'destroy'])->name('destroy');
             Route::get('/by-category', [SubcategoryController::class, 'getByCategory'])->name('by-category');
         });
+       
 
         // Activity logs
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs')->middleware('can:view-activity-logs');
@@ -147,18 +233,18 @@ Route::middleware(['auth'])->group(function () {
         ->middleware(['auth', 'can:generate-reports']);
 
     // Debug routes (remove in production)
-    Route::get('/test-notification', function() {
-        $user = auth()->user();
-        $ticket = \App\Models\Tickets::first();
-        
+    Route::get('/test-notification', function () {
+        $user = Auth::user();
+        $ticket = Tickets::first();
+
         if (!$ticket) {
             return 'No tickets found to test with';
         }
-        
+
         \Illuminate\Support\Facades\Log::info('Testing notification for user: ' . $user->id);
-        
+
         $user->notify(new \App\Notifications\TicketCreated($ticket));
-        
+
         return response()->json([
             'message' => 'Test notification sent!',
             'user' => $user->name,
@@ -166,20 +252,249 @@ Route::middleware(['auth'])->group(function () {
         ]);
     })->middleware('auth');
 
-    Route::get('/test-pusher', function() {
-        $ticket = \App\Models\Tickets::first();
-        
-        if (!$ticket) {
-            return 'No tickets found to test with';
+    Route::get('/test-events', function () {
+        $user = Auth::user();
+
+        // Ambil ticket terbaru
+        $ticket = Tickets::latest()->first();
+
+        if ($ticket) {
+            Log::info('🔥 Manual test - dispatching TicketCreated event', [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number
+            ]);
+
+            // Test event
+            event(new \App\Events\TicketCreated($ticket));
+
+            Log::info('✅ TicketCreated event dispatched successfully');
+
+            return response()->json([
+                'message' => 'TicketCreated event dispatched',
+                'ticket' => $ticket->ticket_number,
+                'ticket_id' => $ticket->id,
+                'user' => $user->name,
+                'created_at' => $ticket->created_at->format('Y-m-d H:i:s'),
+                'event_dispatched' => true
+            ]);
         }
-        
-        \Illuminate\Support\Facades\Log::info('Testing Pusher broadcast');
-        
-        event(new \App\Events\TicketCreated($ticket));
-        
-        return response()->json([
-            'message' => 'Pusher event triggered!',
-            'ticket' => $ticket->ticket_number
-        ]);
+
+        return response()->json(['error' => 'No ticket found']);
     })->middleware('auth');
+
+    Route::get('/test-broadcast', function () {
+        \Illuminate\Support\Facades\Log::info('🧪 Testing broadcast manually');
+
+        // Test broadcast langsung
+        broadcast(new \App\Events\TicketCreated(Tickets::find(29)));
+
+        return response()->json([
+            'message' => 'Broadcast test sent',
+            'timestamp' => now()
+        ]);
+    });
+
+     Route::get('/test/create-ticket', [TestTicketController::class, 'createTestTicket'])
+            ->name('test.create-ticket');
+
+
+    Route::get('/test-broadcast-complete', function () {
+        try {
+            Log::info('🔬 Starting complete broadcast test');
+
+            $ticket = Tickets::find(29);
+            if (!$ticket) {
+                return response()->json(['error' => 'Ticket not found'], 404);
+            }
+
+            // Test 1: Dispatch event
+            Log::info('📡 Dispatching TicketCreated event', [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number
+            ]);
+
+            $event = new \App\Events\TicketCreated($ticket);
+            broadcast($event);
+
+            Log::info('✅ Event dispatched successfully');
+
+            // Test 2: Manual channel broadcast
+            Log::info('📺 Testing manual channel broadcast');
+
+            $channelData = [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'title' => $ticket->title ?? $ticket->title_ticket,
+                'status' => $ticket->status,
+                'priority' => $ticket->priority,
+                'created_at' => $ticket->created_at->toISOString(),
+                'user' => [
+                    'id' => $ticket->user->id,
+                    'name' => $ticket->user->name
+                ]
+            ];
+
+            // Broadcast to all relevant channels
+            broadcast(new \App\Events\TicketCreated($ticket))
+                ->toOthers();
+
+            Log::info('📡 Manual broadcast sent to channels', $channelData);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Complete broadcast test executed',
+                'ticket' => $channelData,
+                'channels_tested' => [
+                    'notifications.1', // Admin
+                    'notifications.5', // User who created
+                    'tickets.global'   // Global tickets channel
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Complete broadcast test failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    })->middleware('auth');
+
+// Update test route untuk test semua user
+Route::get('/test-all-users-broadcast', function () {
+    try {
+        Log::info('🔬 Testing broadcast to ALL users');
+
+        $ticket = Tickets::find(29);
+        if (!$ticket) {
+            return response()->json(['error' => 'Ticket not found'], 404);
+        }
+
+        // Get all users
+        $allUsers = \App\Models\User::all();
+        
+        // Send notifications to all users
+        foreach ($allUsers as $user) {
+            $user->notify(new \App\Notifications\TicketCreated($ticket));
+        }
+
+        // Dispatch event
+        event(new \App\Events\TicketCreated($ticket));
+
+        Log::info('✅ Broadcast sent to ALL users', [
+            'ticket_id' => $ticket->id,
+            'users_count' => $allUsers->count(),
+            'users' => $allUsers->pluck('name')->toArray()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Broadcast sent to ALL users',
+            'recipients_count' => $allUsers->count(),
+            'recipients' => $allUsers->pluck('name')->toArray(),
+            'ticket' => [
+                'id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number,
+                'title' => $ticket->title ?? $ticket->title_ticket,
+            ]
+        ]);
+    } catch (\Exception $e) {
+        Log::error('❌ All users broadcast test failed', [
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+})->middleware('auth');
+
+    Route::get('/test-simple-broadcast', function () {
+        Log::info('🧪 Testing simple broadcast - Event only');
+
+        try {
+            // Test dengan Event yang sudah ada dan terbukti
+            $ticket = Tickets::find(29);
+            if (!$ticket) {
+                return response()->json(['error' => 'Ticket not found', 404]);
+            }
+
+            // Dispatch event
+            $event = new \App\Events\TicketCreated($ticket);
+            broadcast($event);
+
+            Log::info('✅ TicketCreated event dispatched successfully', [
+                'ticket_id' => $ticket->id,
+                'ticket_number' => $ticket->ticket_number
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Event broadcast test completed',
+                'ticket' => [
+                    'id' => $ticket->id,
+                    'ticket_number' => $ticket->ticket_number,
+                    'title' => $ticket->title ?? $ticket->title_ticket,
+                    'status' => $ticket->status,
+                    'priority' => $ticket->priority,
+                ],
+                'timestamp' => now()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('❌ Event broadcast test failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ], 500);
+        }
+    });
+
+    // Test notification dashboard
+    Route::get('/test-notifications-dashboard', function () {
+        return view('test-notifications-dashboard');
+    })->name('test.notifications.dashboard');
+
+    Route::get('/test-pusher', function () {
+        $user = \App\Models\User::first();
+        $ticket = \App\Models\Tickets::first();
+
+        if ($user && $ticket) {
+            // Test database notification dulu
+            $user->notify(new \App\Notifications\TicketCreated($ticket));
+
+            // Cek apakah tersimpan di database
+            $notification = $user->notifications()->latest()->first();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Database notification sent',
+                'user' => $user->name,
+                'ticket' => $ticket->ticket_number,
+                'notification_saved' => $notification ? true : false,
+                'notification_data' => $notification ? $notification->data : null
+            ]);
+        }
+
+        return 'No user or ticket found';
+    });
+    Route::get('/notification-test', function () {
+        return view('test-notification');
+    });
+
+    // API routes for notifications
+    Route::prefix('api')->name('api.')->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'apiIndex'])->name('notifications.index');
+        Route::post('/test-notification', [NotificationController::class, 'apiTestNotification'])->name('notifications.test');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    });
 });

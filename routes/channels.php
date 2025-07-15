@@ -33,3 +33,23 @@ Broadcast::channel('tickets', function ($user) {
 Broadcast::channel('user.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });
+
+//Chanel untuk admin/manager
+Broadcast::channel('admin-notifications', function ($user) {
+    return $user->hasAnyRole(['admin','manager','super-admin']);
+});
+
+// Channel untuk notifications global
+Broadcast::channel('notifications.global', function ($user) {
+    return $user !== null;
+});
+
+// Channel untuk notifications per user
+Broadcast::channel('notifications.{userId}', function ($user, $userId) {
+    Log::info('🔒 Private notification channel auth check', [
+        'user_id' => $user ? $user->id : 'null',
+        'channel_user_id' => $userId,
+        'authorized' => $user && (int) $user->id === (int) $userId
+    ]);
+    return $user && (int) $user->id === (int) $userId;
+});

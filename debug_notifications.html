@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification System Debug</title>
+    <meta name="csrf-token" content="debug-token">
+    <meta name="user-id" content="1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.12.1/font/bootstrap-icons.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Notification System Debug</h1>
+        
+        <!-- Notification Bell -->
+        <div class="notification-section mb-4">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary position-relative" type="button" id="notificationBell" data-bs-toggle="dropdown">
+                    <i class="bi bi-bell"></i> Notifications
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="unreadBadge" style="display: none;">
+                        0
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" id="notificationDropdown" style="width: 300px; max-height: 400px; overflow-y: auto;">
+                    <li><span class="dropdown-item-text text-muted">Loading notifications...</span></li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Test Buttons -->
+        <div class="row">
+            <div class="col-md-6">
+                <button class="btn btn-primary" onclick="testNotification()">Test Notification</button>
+                <button class="btn btn-secondary" onclick="testBadgeUpdate()">Test Badge Update</button>
+                <button class="btn btn-info" onclick="checkElements()">Check Elements</button>
+            </div>
+        </div>
+        
+        <!-- Debug Output -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3>Debug Output:</h3>
+                <pre id="debugOutput" class="bg-light p-3" style="max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://js.pusher.com/8.0.1/pusher.min.js"></script>
+    <script>
+        // Mock console.log to capture output
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        const debugOutput = document.getElementById('debugOutput');
+        
+        function addDebugOutput(type, ...args) {
+            const timestamp = new Date().toLocaleTimeString();
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
+            debugOutput.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            debugOutput.scrollTop = debugOutput.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            addDebugOutput('log', ...args);
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addDebugOutput('error', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addDebugOutput('warn', ...args);
+        };
+        
+        // Mock NotificationManager for testing
+        class MockNotificationManager {
+            constructor() {
+                this.notifications = [];
+                this.unreadCount = 0;
+                console.log('🚀 Mock NotificationManager initialized');
+            }
+            
+            addNotification(notification) {
+                this.notifications.unshift(notification);
+                if (!notification.read_at) {
+                    this.unreadCount++;
+                    this.updateUnreadBadge();
+                }
+                this.updateNotificationDropdown();
+            }
+            
+            updateUnreadBadge() {
+                const badge = document.getElementById('unreadBadge');
+                console.log('🔔 Updating unread badge:', this.unreadCount, badge ? 'found' : 'not found');
+                if (badge) {
+                    if (this.unreadCount > 0) {
+                        badge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                } else {
+                    console.error('❌ Unread badge element not found in DOM');
+                }
+            }
+            
+            updateNotificationDropdown() {
+                const dropdown = document.getElementById('notificationDropdown');
+                console.log('📋 Updating notification dropdown:', this.notifications.length, 'notifications', dropdown ? 'found' : 'not found');
+                if (!dropdown) {
+                    console.error('❌ Notification dropdown element not found in DOM');
+                    return;
+                }
+
+                if (this.notifications.length === 0) {
+                    dropdown.innerHTML = '<li><span class="dropdown-item-text text-muted">No notifications</span></li>';
+                    return;
+                }
+
+                const items = this.notifications.slice(0, 10).map(notification => {
+                    const isRead = notification.read_at !== null;
+                    const timeAgo = this.formatTimeAgo(notification.created_at);
+                    
+                    return `
+                        <li>
+                            <a class="dropdown-item notification-item ${isRead ? '' : 'bg-light'}" 
+                               href="#" 
+                               data-notification-id="${notification.id}">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-bold">${notification.type}</div>
+                                        <div class="small text-muted">${notification.message}</div>
+                                        <div class="small text-muted">${timeAgo}</div>
+                                    </div>
+                                    ${!isRead ? '<div class="badge bg-primary rounded-pill">New</div>' : ''}
+                                </div>
+                            </a>
+                        </li>
+                    `;
+                }).join('');
+
+                dropdown.innerHTML = items;
+            }
+            
+            formatTimeAgo(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - date) / 1000);
+
+                if (diffInSeconds < 60) return 'Just now';
+                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+                return `${Math.floor(diffInSeconds / 86400)}d ago`;
+            }
+        }
+        
+        // Initialize mock notification manager
+        window.notificationManager = new MockNotificationManager();
+        
+        // Test functions
+        function testNotification() {
+            console.log('🧪 Testing notification...');
+            window.notificationManager.addNotification({
+                id: Date.now().toString(),
+                type: 'Test Notification',
+                message: 'This is a test notification',
+                read_at: null,
+                created_at: new Date().toISOString()
+            });
+        }
+        
+        function testBadgeUpdate() {
+            console.log('🧪 Testing badge update...');
+            window.notificationManager.unreadCount = 5;
+            window.notificationManager.updateUnreadBadge();
+        }
+        
+        function checkElements() {
+            console.log('🧪 Checking DOM elements...');
+            const bell = document.getElementById('notificationBell');
+            const badge = document.getElementById('unreadBadge');
+            const dropdown = document.getElementById('notificationDropdown');
+            console.log('🔍 DOM elements check:', { bell: !!bell, badge: !!badge, dropdown: !!dropdown });
+        }
+        
+        // Auto-check elements when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🔄 DOM loaded');
+            checkElements();
+        });
+    </script>
+</body>
+</html>

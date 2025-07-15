@@ -320,7 +320,7 @@ class ManagerDashboardController extends Controller
         return User::role('technician')
                   ->withCount(['assignedTickets as total_assigned',
                               'assignedTickets as resolved' => function($q) {
-                                  $q->where('status', 'resolved');
+                                  $q->whereIn('status', ['resolved', 'closed']);
                               }])
                   ->get();
     }

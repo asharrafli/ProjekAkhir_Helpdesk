@@ -13,7 +13,7 @@ class TicketPolicy
     public function view(User $user, Tickets $ticket)
     {
         // Admin and manager can view all tickets
-        if ($user->hasRole(['admin', 'manager'])) {
+        if ($user->hasRole(['admin', 'manager','super-admin'])) {
             return true;
         }
 

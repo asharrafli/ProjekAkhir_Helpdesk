@@ -17,17 +17,18 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
  * allows your team to easily build robust real-time web applications.
  */
 
- import Echo from 'laravel-echo';
+// COMMENT OUT ECHO TEMPORARILY - AKAN KITA SETUP MANUAL
+/*
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
- import Pusher from 'pusher-js';
- window.Pusher = Pusher;
+window.Pusher = Pusher;
 
- window.Echo = new Echo({
+window.Echo = new Echo({
     broadcaster: 'pusher',
     key: import.meta.env.VITE_PUSHER_APP_KEY,
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER ?? 'ap1',
-    forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
-    encrypted: true,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+    forceTLS: true,
     authorizer: (channel, options) => {
         return {
             authorize: (socketId, callback) => {
@@ -42,14 +43,22 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
                     }
                 })
                 .then(response => {
-                    console.log('✅ Broadcasting auth successful for channel:', channel.name);
                     callback(false, response.data);
                 })
                 .catch(error => {
-                    console.error('❌ Broadcasting auth failed for channel:', channel.name, error.response?.data || error.message);
                     callback(true, error);
                 });
             }
         };
     },
 });
+
+// Test connection
+window.Echo.connector.pusher.connection.bind('connected', function() {
+    console.log('✅ Pusher connected successfully');
+});
+
+window.Echo.connector.pusher.connection.bind('error', function(error) {
+    console.error('❌ Pusher connection error:', error);
+});
+*/
