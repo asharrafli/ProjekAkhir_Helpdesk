@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Events\TicketCreated;
 use App\Events\TicketAssigned;
 use App\Events\TicketStatusChanged;
+use App\Models\TelegramNotifiable;
 use App\Notifications\TicketCreated as TicketCreatedNotification;
 use App\Notifications\TicketAssigned as TicketAssignedNotification;
 use App\Notifications\TicketStatusChanged as TicketStatusChangedNotification;
@@ -79,7 +80,18 @@ class TicketController extends Controller
         
         return view('tickets.index', compact('tickets', 'categories', 'technicians'));
     }
-
+    public function assigned()
+    {
+        $this->authorize('view-assigned-tickets');
+        
+        $tickets = Tickets::where('assigned_to', $this->getCurrentUserId())
+            ->with(['user', 'category', 'subcategory','assignedTo'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+        
+        return view('tickets.assigned', compact('tickets'));
+    }
+    
     public function create()
     {
         $categories = TicketCategory::all();
@@ -155,16 +167,75 @@ class TicketController extends Controller
                 ->withInput()
                 ->with('error', 'Failed to create ticket: ' . $e->getMessage());
         }
+
+        // kirim notifikasi telegram untuk tiket baru
+        $notifiable = new TelegramNotifiable();
+        $notifiable->notify(new TicketCreatedNotification($ticket->load('user')));
+
+    }
+
+    public function assignTechnician(Request $request, $ticketId){
+        $ticket = Tickets::findOrFail($ticketId);
+        $technician = User::findOrFail($request->technician_id);
+
+        // Update tiket dengan teknisi yang dipilih
+        $ticket->update([
+            'assigned_to' => $technician->id,
+            'status' => 'in_progress'
+        ]);
+
+        //Kirim notifikasi assignment
+        $notifiable = new TelegramNotifiable();
+        $notifiable->notify(new TicketAssignedNotification(
+            $ticket->load('user'),
+            $technician
+        ));
     }
 
     public function show(Tickets $ticket)
     {
         $this->authorize('view', $ticket);
-        
-        $ticket->load(['user', 'assignedTo', 'category', 'subcategory', 'attachments', 'activities']);
+
+        $ticket->load(['user', 'assignedTo', 'category', 'subcategory', 'attachments', 'comments.user', 'activities']);
         $technicians = User::role('technician')->get();
         
         return view('tickets.show', compact('ticket', 'technicians'));
+    }
+    public function storeComment(Request $request, Tickets $ticket)
+    {
+        $this->authorize('comment-on-tickets', $ticket);
+        
+        $request->validate([
+            'comment' => 'required|string|max:5000',
+            'is_internal' => 'sometimes|boolean',
+            'is_solution' => 'sometimes|boolean',
+        ]);
+
+        $comment = $ticket->comments()->create([
+            'user_id' => Auth::id(),
+            'comment' => $request->comment,
+            'is_internal' => $request->boolean('is_internal', false),
+            'is_solution' => $request->boolean('is_solution', false),
+        ]);
+        // If marked as solution, update ticket status
+        if ($request->boolean('is_solution')) {
+            $ticket->update([
+                'status' => 'resolved',
+                'resolved_at' => now(),
+                'resolution_notes' => $request->comment
+            ]);
+        }
+
+        // Update first response time if this is first response from technician
+        if (!$ticket->first_response_at && Auth::user()->hasRole('technician')) {
+            $ticket->update([
+                'first_response_at' => now(),
+                'response_time_minutes' => $ticket->created_at->diffInMinutes(now())
+            ]);
+        }
+
+        return back()->with('success', 'Comment added successfully!');
+
     }
 
     public function edit(Tickets $ticket)
@@ -623,6 +694,7 @@ class TicketController extends Controller
 
         return redirect()->back()->with('success', 'Attachments uploaded successfully!');
     }
+    
 
     // Helper method to get the current user ID safely
     private function getCurrentUserId()

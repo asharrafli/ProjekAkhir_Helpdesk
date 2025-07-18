@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('assigned_to')->nullable()->constrained('users');
             $table->foreignId('category_id')->constrained('ticket_categories');
-            $table->foreignId('subcategory_id')->nullable()->constrained('ticket_subcategories');
+            $table->unsignedBigInteger('subcategory_id')->nullable();
             $table->string('title');
             $table->string('title_ticket')->nullable(); // Keep for backward compatibility
             $table->text('description_ticket');

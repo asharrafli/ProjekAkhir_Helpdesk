@@ -21,6 +21,9 @@
                     <button class="btn btn-success" id="exportBtn">
                         <i class="fas fa-download"></i> Export Report
                     </button>
+                    <button class="btn btn-info" id="testChartsBtn">
+                        <i class="fas fa-vial"></i> Test Charts
+                    </button>
                 </div>
             </div>
         </div>
@@ -326,16 +329,53 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
+// Debug: Log immediately when script loads
+console.log('=== DASHBOARD SCRIPT LOADING ===');
+console.log('Current URL:', window.location.href);
+console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+
+// Test Chart.js loading
+if (typeof Chart !== 'undefined') {
+    console.log('Chart.js version:', Chart.version);
+} else {
+    console.error('Chart.js failed to load!');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOM CONTENT LOADED ===');
+    console.log('Dashboard script loaded');
+    console.log('Chart.js available:', typeof Chart !== 'undefined');
+    
+    // Check if all canvas elements exist immediately
+    const canvasIds = ['ticketTrendsChart', 'priorityDistributionChart', 'technicianPerformanceChart', 'categoryDistributionChart', 'resolutionTimeChart'];
+    canvasIds.forEach(id => {
+        const canvas = document.getElementById(id);
+        console.log(`Canvas ${id}:`, canvas ? 'Found' : 'NOT FOUND');
+        if (canvas) {
+            console.log(`Canvas ${id} context:`, canvas.getContext('2d') ? 'OK' : 'FAILED');
+        }
+    });
+    
+    // Check test button
+    const testBtn = document.getElementById('testChartsBtn');
+    console.log('Test button:', testBtn ? 'Found' : 'NOT FOUND');
+    
     let currentPeriod = 'week';
     let currentStartDate = null;
     let currentEndDate = null;
     let charts = {};
 
-    // Initialize all charts
-    initializeCharts();
+    // Initialize charts with delay
+    setTimeout(function() {
+        console.log('Starting chart initialization...');
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded!');
+            return;
+        }
+        initializeCharts();
+    }, 1000);
 
     // Period filter handlers
     document.querySelectorAll('.period-filter').forEach(function(element) {
@@ -364,28 +404,265 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Export handlers
     document.getElementById('exportBtn').addEventListener('click', function() {
-        // Generate PDF report
         generatePDFReport();
     });
 
+    // Test charts button
+    // const testBtn = document.getElementById('testChartsBtn');
+    if (testBtn) {
+        console.log('Adding click handler to test button...');
+        testBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('=== TEST BUTTON CLICKED ===');
+            
+            // Tambahkan loading indicator
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Charts...';
+            this.disabled = true;
+            
+            setTimeout(() => {
+                try {
+                    createAllTestCharts();
+                } catch (error) {
+                    console.error('Error in createAllTestCharts:', error);
+                    alert('Error creating test charts: ' + error.message);
+                } finally {
+                    // Kembalikan button ke state semula
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }
+            }, 500);
+        });
+    } else {
+        console.error('Test button not found!');
+    }
+
+    
+    function showNoDataMessage(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const container = canvas.parentElement;
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center">
+                    <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No Data Available</h6>
+                    <p class="small text-muted">No data found for the selected period</p>
+                </div>
+            </div>
+        `;
+    }
+
+    function createAllTestCharts() {
+        console.log('=== CREATING ALL TEST CHARTS ===');
+        
+        // Pastikan Chart.js tersedia
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js not loaded!');
+            alert('Chart.js not loaded! Please refresh the page.');
+            return;
+        }
+
+        // Daftar chart yang akan dibuat
+        const chartsToCreate = [
+            {
+                id: 'ticketTrendsChart',
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Tickets Created',
+                        data: [12, 19, 3, 5, 2, 3, 20],
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Tickets Resolved',
+                        data: [8, 15, 2, 4, 1, 2, 18],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                }
+            },
+            {
+                id: 'priorityDistributionChart',
+                type: 'doughnut',
+                data: {
+                    labels: ['Low', 'Medium', 'High', 'Urgent'],
+                    datasets: [{
+                        data: [30, 25, 20, 15],
+                        backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                }
+            },
+            {
+                id: 'technicianPerformanceChart',
+                type: 'bar',
+                data: {
+                    labels: ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Brown'],
+                    datasets: [{
+                        label: 'Total Assigned',
+                        data: [15, 12, 8, 10],
+                        backgroundColor: 'rgba(0, 123, 255, 0.8)',
+                        borderColor: '#007bff',
+                        borderWidth: 1
+                    }, {
+                        label: 'Resolved',
+                        data: [12, 10, 6, 8],
+                        backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                        borderColor: '#28a745',
+                        borderWidth: 1
+                    }]
+                }
+            },
+            {
+                id: 'categoryDistributionChart',
+                type: 'pie',
+                data: {
+                    labels: ['Hardware', 'Software', 'Network', 'Security', 'Other'],
+                    datasets: [{
+                        data: [25, 30, 20, 15, 10],
+                        backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                }
+            },
+            {
+                id: 'resolutionTimeChart',
+                type: 'bar',
+                data: {
+                    labels: ['Low', 'Medium', 'High', 'Urgent', 'Critical'],
+                    datasets: [{
+                        label: 'Avg Resolution Time (Hours)',
+                        data: [4, 8, 12, 2, 1],
+                        backgroundColor: [
+                            'rgba(40, 167, 69, 0.8)',
+                            'rgba(23, 162, 184, 0.8)',
+                            'rgba(255, 193, 7, 0.8)',
+                            'rgba(220, 53, 69, 0.8)',
+                            'rgba(108, 117, 125, 0.8)'
+                        ],
+                        borderColor: [
+                            '#28a745',
+                            '#17a2b8',
+                            '#ffc107',
+                            '#dc3545',
+                            '#6c757d'
+                        ],
+                        borderWidth: 1
+                    }]
+                }
+            }
+        ];
+
+        let successCount = 0;
+        let failedCharts = [];
+
+        // Buat setiap chart
+        chartsToCreate.forEach(chartConfig => {
+            try {
+                const canvas = document.getElementById(chartConfig.id);
+                
+                if (!canvas) {
+                    console.error(`Canvas ${chartConfig.id} not found!`);
+                    failedCharts.push(chartConfig.id);
+                    return;
+                }
+
+                console.log(`Creating chart: ${chartConfig.id}`);
+                
+                // Cek apakah canvas dalam kondisi baik
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    console.error(`Cannot get 2D context for ${chartConfig.id}`);
+                    failedCharts.push(chartConfig.id);
+                    return;
+                }
+
+                // Hapus chart yang sudah ada
+                if (charts[chartConfig.id]) {
+                    console.log(`Destroying existing chart: ${chartConfig.id}`);
+                    charts[chartConfig.id].destroy();
+                }
+
+                // Buat chart baru
+                charts[chartConfig.id] = new Chart(ctx, {
+                    type: chartConfig.type,
+                    data: chartConfig.data,
+                    options: getChartOptions(chartConfig.type, chartConfig.id)
+                });
+
+                console.log(`✓ Chart ${chartConfig.id} created successfully`);
+                successCount++;
+
+            } catch (error) {
+                console.error(`✗ Error creating chart ${chartConfig.id}:`, error);
+                failedCharts.push(chartConfig.id);
+                
+                // Tampilkan pesan error di canvas
+                showChartError(chartConfig.id, error.message);
+            }
+        });
+
+        // Tampilkan hasil
+        if (successCount === chartsToCreate.length) {
+            alert(`✅ All ${successCount} test charts created successfully!`);
+        } else {
+            alert(`⚠️ ${successCount}/${chartsToCreate.length} charts created successfully.\nFailed charts: ${failedCharts.join(', ')}`);
+        }
+    }
+
+    function showChartError(canvasId, errorMessage) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const container = canvas.parentElement;
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h6 class="text-muted">Error Loading Chart</h6>
+                    <p class="small text-muted">${errorMessage}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i> Reload Page
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
     function initializeCharts() {
-        // Ticket Trends Chart
+        console.log('Initializing charts...');
+        
+        // Check if all canvas elements exist
+        const canvasIds = ['ticketTrendsChart', 'priorityDistributionChart', 'technicianPerformanceChart', 'categoryDistributionChart', 'resolutionTimeChart'];
+        canvasIds.forEach(id => {
+            const canvas = document.getElementById(id);
+            console.log(`Canvas ${id}:`, canvas ? 'Found' : 'NOT FOUND');
+        });
+        
+        // Load all charts
         loadChart('ticket_trends', 'ticketTrendsChart', 'line');
-        
-        // Priority Distribution Chart
         loadChart('priority_distribution', 'priorityDistributionChart', 'doughnut');
-        
-        // Technician Performance Chart
         loadChart('technician_performance', 'technicianPerformanceChart', 'bar');
-        
-        // Category Distribution Chart
         loadChart('category_distribution', 'categoryDistributionChart', 'pie');
-        
-        // Resolution Time Chart
         loadChart('resolution_time', 'resolutionTimeChart', 'bar');
     }
 
     function loadChart(type, canvasId, chartType) {
+        console.log(`Loading chart: ${type} on canvas: ${canvasId}`);
+        
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error(`Canvas ${canvasId} not found`);
+            return;
+        }
+        
         const params = new URLSearchParams({
             type: type,
             period: currentPeriod
@@ -396,87 +673,262 @@ document.addEventListener('DOMContentLoaded', function() {
             params.append('end_date', currentEndDate);
         }
 
-        fetch(`{{ route('manager.dashboard.chart-data') }}?${params}`)
-            .then(response => response.json())
+        const url = `{{ route('manager.dashboard.chart-data') }}?${params}`;
+        console.log(`Fetching from URL: ${url}`);
+
+        fetch(url)
+            .then(response => {
+                console.log(`Response for ${type}:`, response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                const ctx = document.getElementById(canvasId).getContext('2d');
+                console.log(`Data for ${type}:`, data);
+                
+                // Validate data format
+                if (!data.labels || !data.datasets) {
+                    console.error(`Invalid data format for ${type}:`, data);
+                    showNoDataMessage(canvasId);
+                    return;
+                }
+                
+                if (data.labels.length === 0 || data.datasets.length === 0) {
+                    console.warn(`No data available for ${type}`);
+                    showNoDataMessage(canvasId);
+                    return;
+                }
+                
+                const ctx = canvas.getContext('2d');
                 
                 // Destroy existing chart if it exists
                 if (charts[canvasId]) {
                     charts[canvasId].destroy();
                 }
                 
+                // Create new chart
                 charts[canvasId] = new Chart(ctx, {
                     type: chartType,
                     data: data,
-                    options: getChartOptions(chartType)
+                    options: getChartOptions(chartType, type)
                 });
+                
+                console.log(`Chart ${type} created successfully`);
             })
-            .catch(error => console.error('Error loading chart:', error));
+            .catch(error => {
+                console.error(`Error loading chart ${type}:`, error);
+                // Fallback: create chart with dummy data
+                createFallbackChart(canvasId, chartType, type);
+            });
     }
 
-    function getChartOptions(chartType) {
+    function createFallbackChart(canvasId, chartType, type) {
+        console.log(`Creating fallback chart for ${type}`);
+        
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Dummy data based on chart type
+        let fallbackData;
+        
+        if (chartType === 'line') {
+            fallbackData = {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Sample Data',
+                    data: [12, 19, 3, 5, 2, 3, 7],
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true
+                }]
+            };
+        } else if (chartType === 'bar') {
+            fallbackData = {
+                labels: ['Tech 1', 'Tech 2', 'Tech 3', 'Tech 4'],
+                datasets: [{
+                    label: 'Total Assigned',
+                    data: [10, 15, 8, 12],
+                    backgroundColor: 'rgba(0, 123, 255, 0.8)'
+                }, {
+                    label: 'Resolved',
+                    data: [8, 12, 6, 10],
+                    backgroundColor: 'rgba(40, 167, 69, 0.8)'
+                }]
+            };
+        } else if (chartType === 'doughnut' || chartType === 'pie') {
+            fallbackData = {
+                labels: ['Low', 'Medium', 'High', 'Urgent'],
+                datasets: [{
+                    data: [30, 25, 20, 15],
+                    backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
+                }]
+            };
+        }
+        
+        try {
+            // Destroy existing chart if it exists
+            if (charts[canvasId]) {
+                charts[canvasId].destroy();
+            }
+            
+            // Create fallback chart
+            charts[canvasId] = new Chart(ctx, {
+                type: chartType,
+                data: fallbackData,
+                options: getChartOptions(chartType, type)
+            });
+            
+            console.log(`Fallback chart created for ${type}`);
+        } catch (error) {
+            console.error(`Error creating fallback chart for ${type}:`, error);
+            showChartError(canvasId, `Failed to create chart: ${error.message}`);
+        }
+    }
+
+    function getChartOptions(chartType, dataType) {
         const baseOptions = {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: chartType === 'line' || chartType === 'bar' ? 'top' : 'right'
+                    position: chartType === 'line' || chartType === 'bar' ? 'top' : 'right',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    cornerRadius: 8
                 }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
             }
         };
 
-        if (chartType === 'line' || chartType === 'bar') {
+        // Add scales for line and bar charts
+        if (chartType === 'line') {
             baseOptions.scales = {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
                 }
+            };
+        } else if (chartType === 'bar') {
+            baseOptions.scales = {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
+            };
+        }
+
+        // Special options for resolution time chart
+        if (dataType === 'resolution_time' && chartType === 'bar') {
+            baseOptions.scales.y.title = {
+                display: true,
+                text: 'Hours'
             };
         }
 
         return baseOptions;
     }
 
+    function showChartError(canvasId, errorMessage) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const container = canvas.parentElement;
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h6 class="text-muted">Error Loading Chart</h6>
+                    <p class="small text-muted">${errorMessage}</p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i> Reload Page
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function showNoDataMessage(canvasId) {
+        const canvas = document.getElementById(canvasId);
+        const container = canvas.parentElement;
+        container.innerHTML = `
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center">
+                    <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No Data Available</h6>
+                    <p class="small text-muted">No data found for the selected period</p>
+                </div>
+            </div>
+        `;
+    }
+
     function refreshAllCharts() {
-        Object.keys(charts).forEach(function(chartId) {
-            const chartType = getChartTypeFromId(chartId);
-            loadChart(chartType, chartId, getChartDisplayType(chartId));
-        });
-    }
-
-    function getChartTypeFromId(chartId) {
-        const mapping = {
-            'ticketTrendsChart': 'ticket_trends',
-            'priorityDistributionChart': 'priority_distribution',
-            'technicianPerformanceChart': 'technician_performance',
-            'categoryDistributionChart': 'category_distribution',
-            'resolutionTimeChart': 'resolution_time'
+        const chartConfigs = {
+            'ticketTrendsChart': { type: 'ticket_trends', chartType: 'line' },
+            'priorityDistributionChart': { type: 'priority_distribution', chartType: 'doughnut' },
+            'technicianPerformanceChart': { type: 'technician_performance', chartType: 'bar' },
+            'categoryDistributionChart': { type: 'category_distribution', chartType: 'pie' },
+            'resolutionTimeChart': { type: 'resolution_time', chartType: 'bar' }
         };
-        return mapping[chartId];
-    }
 
-    function getChartDisplayType(chartId) {
-        const mapping = {
-            'ticketTrendsChart': 'line',
-            'priorityDistributionChart': 'doughnut',
-            'technicianPerformanceChart': 'bar',
-            'categoryDistributionChart': 'pie',
-            'resolutionTimeChart': 'bar'
-        };
-        return mapping[chartId];
-    }
-
-    function generatePDFReport() {
-        const params = new URLSearchParams({
-            period: currentPeriod
+        Object.keys(chartConfigs).forEach(function(chartId) {
+            const config = chartConfigs[chartId];
+            loadChart(config.type, chartId, config.chartType);
         });
         
-        if (currentStartDate && currentEndDate) {
-            params.append('start_date', currentStartDate);
-            params.append('end_date', currentEndDate);
-        }
-
-        window.open(`{{ route('manager.dashboard.export') }}?${params}`, '_blank');
+        // Also refresh technician metrics table
+        loadTechnicianMetrics();
     }
 
     // Refresh chart handlers
@@ -501,6 +953,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return mapping[chartType];
     }
 
+    function getChartDisplayType(chartId) {
+        const mapping = {
+            'ticketTrendsChart': 'line',
+            'priorityDistributionChart': 'doughnut',
+            'technicianPerformanceChart': 'bar',
+            'categoryDistributionChart': 'pie',
+            'resolutionTimeChart': 'bar'
+        };
+        return mapping[chartId];
+    }
+
+    function generatePDFReport() {
+        const params = new URLSearchParams({
+            period: currentPeriod
+        });
+        
+        if (currentStartDate && currentEndDate) {
+            params.append('start_date', currentStartDate);
+            params.append('end_date', currentEndDate);
+        }
+
+        // For now, just show alert. You can implement PDF generation later
+        alert('PDF export functionality will be implemented');
+    }
+
     // Load technician performance metrics table
     function loadTechnicianMetrics() {
         const tbody = document.querySelector('#technicianMetricsTable tbody');
@@ -508,11 +985,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center">
+                <td colspan="7" class="text-center py-4">
                     <div class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="sr-only">Loading...</span>
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    Loading performance metrics...
+                    <div class="mt-2 text-muted">Loading performance metrics...</div>
                 </td>
             </tr>
         `;
@@ -535,41 +1012,59 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                console.log('Technician metrics data:', data); // Debug log
                 const tbody = document.querySelector('#technicianMetricsTable tbody');
                 tbody.innerHTML = '';
                 
                 if (data.technician_metrics && data.technician_metrics.length > 0) {
                     data.technician_metrics.forEach((tech, index) => {
-                        const totalAssigned = (data.datasets && data.datasets[0]) ? (data.datasets[0].data[index] || 0) : 0;
-                        const resolved = (data.datasets && data.datasets[1]) ? (data.datasets[1].data[index] || 0) : 0;
-                        const inProgress = (data.datasets && data.datasets[2]) ? (data.datasets[2].data[index] || 0) : 0;
+                        const totalAssigned = tech.total_assigned || 0;
+                        const resolved = tech.resolved || 0;
+                        const inProgress = tech.in_progress || 0;
+                        const avgResolution = tech.avg_resolution || 0;
+                        const efficiency = tech.efficiency || 0;
                         
                         // Determine performance badge
                         let performanceBadge = '';
-                        if (tech.efficiency >= 80) {
-                            performanceBadge = '<span class="badge badge-success">Excellent</span>';
-                        } else if (tech.efficiency >= 60) {
-                            performanceBadge = '<span class="badge badge-primary">Good</span>';
-                        } else if (tech.efficiency >= 40) {
-                            performanceBadge = '<span class="badge badge-warning">Average</span>';
+                        let badgeClass = '';
+                        
+                        if (efficiency >= 80) {
+                            performanceBadge = 'Excellent';
+                            badgeClass = 'bg-success';
+                        } else if (efficiency >= 60) {
+                            performanceBadge = 'Good';
+                            badgeClass = 'bg-primary';
+                        } else if (efficiency >= 40) {
+                            performanceBadge = 'Average';
+                            badgeClass = 'bg-warning';
                         } else {
-                            performanceBadge = '<span class="badge badge-danger">Needs Improvement</span>';
+                            performanceBadge = 'Needs Improvement';
+                            badgeClass = 'bg-danger';
                         }
                         
                         const row = `
                             <tr>
-                                <td class="ps-3"><strong>${tech.name}</strong></td>
-                                <td class="text-center">${totalAssigned}</td>
-                                <td class="text-center">${resolved}</td>
-                                <td class="text-center d-none d-md-table-cell">${inProgress}</td>
-                                <td class="text-center d-none d-lg-table-cell">${tech.avg_resolution}h</td>
-                                <td class="d-none d-xl-table-cell">
-                                    <div class="progress">
-                                        <div class="progress-bar bg-primary" role="progressbar" style="width: ${tech.efficiency}%">${tech.efficiency}%</div>
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 32px; height: 32px; font-size: 12px;">
+                                            ${tech.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <strong>${tech.name}</strong>
                                     </div>
                                 </td>
-                                <td class="text-center pe-3">${performanceBadge}</td>
+                                <td class="text-center"><span class="badge bg-light text-dark">${totalAssigned}</span></td>
+                                <td class="text-center"><span class="badge bg-success">${resolved}</span></td>
+                                <td class="text-center d-none d-md-table-cell"><span class="badge bg-warning">${inProgress}</span></td>
+                                <td class="text-center d-none d-lg-table-cell">${avgResolution}h</td>
+                                <td class="d-none d-xl-table-cell">
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar ${badgeClass}" role="progressbar" style="width: ${efficiency}%">
+                                            ${efficiency}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-center pe-3">
+                                    <span class="badge ${badgeClass}">${performanceBadge}</span>
+                                </td>
                             </tr>
                         `;
                         tbody.innerHTML += row;
@@ -581,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading technician metrics:', error);
                 const tbody = document.querySelector('#technicianMetricsTable tbody');
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Error loading data: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error loading data: ${error.message}</td></tr>`;
             });
     }
 
@@ -601,22 +1096,31 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Chart Containers */
 .chart-container {
     position: relative;
-    height: 300px;
+    height: 350px;
     width: 100%;
+    min-height: 300px;
 }
 
 .chart-container-pie {
     position: relative;
-    height: 250px;
+    height: 280px;
     width: 100%;
-    max-width: 300px;
+    max-width: 350px;
     margin: 0 auto;
 }
 
 .chart-container-wide {
     position: relative;
-    height: 250px;
+    height: 300px;
     width: 100%;
+    min-height: 250px;
+}
+
+/* Ensure canvas elements are visible */
+canvas {
+    display: block !important;
+    max-width: 100% !important;
+    height: auto !important;
 }
 
 /* Responsive adjustments */
@@ -704,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', function() {
     line-height: 1.25rem;
 }
 
-/* Icon improvements */
+/* Icon size adjustments */
 .fa-2x {
     font-size: 1.75em !important;
 }

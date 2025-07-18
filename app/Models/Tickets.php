@@ -264,4 +264,16 @@ class Tickets extends Model
         }
         return null;
     }
+    public function comments(){
+        return $this->hasMany(TicketComment::class, 'ticket_id')->orderBy('created_at','asc');
+    }
+    public function publicComments()
+    {
+        return $this->hasMany(TicketComment::class, 'ticket_id')->where('is_internal', false)->orderBy('created_at', 'asc');
+    }
+
+    public function internalNotes()
+    {
+        return $this->hasMany(TicketComment::class, 'ticket_id')->where('is_internal', true)->orderBy('created_at', 'asc');
+    }
 }

@@ -55,11 +55,14 @@ class RolePermissionSeeder extends Seeder
             'delete-tickets',
             'assign-tickets',
             'view-all-tickets',
+            'comment-on-tickets',
+            'view-internal-notes',
             'claim-tickets',
             'close-tickets',
             'reopen-tickets',
             'view-ticket-attachments',
             'upload-ticket-attachments',
+            'view-assigned-tickets',
             
             // Activity logs
             'view-activity-logs',
@@ -84,21 +87,22 @@ class RolePermissionSeeder extends Seeder
             'bulk-ticket-operations',
         ];
 
+        // Use firstOrCreate untuk permissions
         foreach ($permissions as $permission) {
-            $permissionClass::create(['name' => $permission]);
+            $permissionClass::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        // Create roles
-        $superAdmin = $roleClass::create(['name' => 'super-admin']);
-        $admin = $roleClass::create(['name' => 'admin']);
-        $manager = $roleClass::create(['name' => 'manager']);
-        $technician = $roleClass::create(['name' => 'technician']);
-        $user = $roleClass::create(['name' => 'user']);
+        // firstOrCreate roles
+        $superAdmin = $roleClass::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
+        $admin = $roleClass::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $manager = $roleClass::firstOrCreate(['name' => 'manager', 'guard_name' => 'web']);
+        $technician = $roleClass::firstOrCreate(['name' => 'technician', 'guard_name' => 'web']);
+        $user = $roleClass::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
 
         // Assign permissions to roles
-        $superAdmin->givePermissionTo($permissionClass::all());
+        $superAdmin->syncPermissions($permissionClass::all());
 
-        $admin->givePermissionTo([
+        $admin->syncPermissions([
             'view-admin-dashboard',
             'view-users',
             'create-users',
@@ -114,6 +118,8 @@ class RolePermissionSeeder extends Seeder
             'delete-tickets',
             'assign-tickets',
             'view-all-tickets',
+            'comment-on-tickets',
+            'view-internal-notes',
             'claim-tickets',
             'close-tickets',
             'reopen-tickets',
@@ -131,11 +137,12 @@ class RolePermissionSeeder extends Seeder
             'manage-notifications',
         ]);
 
-        $manager->givePermissionTo([
+        $manager->syncPermissions([
             'view-manager-dashboard',
             'view-users',
             'view-tickets',
             'view-all-tickets',
+            'comment-on-tickets',
             'view-ticket-attachments',
             'view-activity-logs',
             'view-ticket-activities',
@@ -147,81 +154,114 @@ class RolePermissionSeeder extends Seeder
             'receive-notifications',
         ]);
 
-        $technician->givePermissionTo([
+        $technician->syncPermissions([
             'view-technician-dashboard',
             'view-tickets',
             'create-tickets',
             'edit-tickets',
+            'comment-on-tickets',
+            'view-internal-notes',
             'claim-tickets',
             'close-tickets',
             'view-ticket-attachments',
             'upload-ticket-attachments',
             'view-ticket-activities',
             'receive-notifications',
+            'view-assigned-tickets',
         ]);
 
-        $user->givePermissionTo([
+        $user->syncPermissions([
             'view-tickets',
             'create-tickets',
             'edit-tickets',
+            'comment-on-tickets',
             'view-ticket-attachments',
             'upload-ticket-attachments',
             'receive-notifications',
         ]);
 
+        // ✅ Ganti User::create() dengan firstOrCreate()
+        
         // Create super admin user
-        $superAdminUser = User::create([
-            'name' => 'Super Admin',
-            'email' => 'admin@soluxio.com',
-            'password' => bcrypt('password'),
-            'is_admin' => true,
-            'status' => 'active',
-        ]);
+        $superAdminUser = User::firstOrCreate(
+            ['email' => 'admin@soluxio.com'], // Kondisi pencarian
+            [
+                'name' => 'Super Admin',
+                'password' => bcrypt('password'),
+                'is_admin' => true,
+                'status' => 'active',
+            ]
+        );
 
-        $superAdminUser->assignRole('super-admin');
+        if (!$superAdminUser->hasRole('super-admin')) {
+            $superAdminUser->assignRole('super-admin');
+        }
 
         // Create sample admin user
-        $adminUser = User::create([
-            'name' => 'Admin User',
-            'email' => 'admin.user@soluxio.com',
-            'password' => bcrypt('password'),
-            'is_admin' => true,
-            'status' => 'active',
-        ]);
+        $adminUser = User::firstOrCreate(
+            ['email' => 'admin.user@soluxio.com'], // Kondisi pencarian
+            [
+                'name' => 'Admin User',
+                'password' => bcrypt('password'),
+                'is_admin' => true,
+                'status' => 'active',
+            ]
+        );
 
-        $adminUser->assignRole('admin');
+        if (!$adminUser->hasRole('admin')) {
+            $adminUser->assignRole('admin');
+        }
 
         // Create sample manager
-        $managerUser = User::create([
-            'name' => 'Manager User',
-            'email' => 'manager@soluxio.com',
-            'password' => bcrypt('password'),
-            'is_admin' => false,
-            'status' => 'active',
-        ]);
+        $managerUser = User::firstOrCreate(
+            ['email' => 'manager@soluxio.com'], // Kondisi pencarian
+            [
+                'name' => 'Manager User',
+                'password' => bcrypt('password'),
+                'is_admin' => false,
+                'status' => 'active',
+            ]
+        );
 
-        $managerUser->assignRole('manager');
+        if (!$managerUser->hasRole('manager')) {
+            $managerUser->assignRole('manager');
+        }
 
         // Create sample technician
-        $techUser = User::create([
-            'name' => 'Technician User',
-            'email' => 'tech@soluxio.com',
-            'password' => bcrypt('password'),
-            'is_admin' => false,
-            'status' => 'active',
-        ]);
+        $techUser = User::firstOrCreate(
+            ['email' => 'tech@soluxio.com'], // Kondisi pencarian
+            [
+                'name' => 'Technician User',
+                'password' => bcrypt('password'),
+                'is_admin' => false,
+                'status' => 'active',
+            ]
+        );
 
-        $techUser->assignRole('technician');
+        if (!$techUser->hasRole('technician')) {
+            $techUser->assignRole('technician');
+        }
 
         // Create sample regular user
-        $regularUser = User::create([
-            'name' => 'Regular User',
-            'email' => 'user@soluxio.com',
-            'password' => bcrypt('password'),
-            'is_admin' => false,
-            'status' => 'active',
-        ]);
+        $regularUser = User::firstOrCreate(
+            ['email' => 'user@soluxio.com'], // Kondisi pencarian
+            [
+                'name' => 'Regular User',
+                'password' => bcrypt('password'),
+                'is_admin' => false,
+                'status' => 'active',
+            ]
+        );
 
-        $regularUser->assignRole('user');
+        if (!$regularUser->hasRole('user')) {
+            $regularUser->assignRole('user');
+        }
+
+        $this->command->info('✅ Roles and permissions seeded successfully!');
+        $this->command->info('📧 Super Admin: admin@soluxio.com | Password: password');
+        $this->command->info('📧 Admin: admin.user@soluxio.com | Password: password');
+        $this->command->info('📧 Manager: manager@soluxio.com | Password: password');
+        $this->command->info('📧 Technician: tech@soluxio.com | Password: password');
+        $this->command->info('📧 User: user@soluxio.com | Password: password');
     }
 }

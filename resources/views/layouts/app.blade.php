@@ -23,6 +23,9 @@
     @livewireStyles
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
+    <!-- Custom styles stack -->
+    @stack('styles')
+
     <style>
         .sidebar{
             height: 100vh;
@@ -107,6 +110,105 @@
         .dropdown-menu {
             z-index: 1050;
         }
+         /* Chat Widget Styles */
+        .chat-widget {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        
+        .chat-header:hover {
+            background: #e9ecef;
+        }
+        
+        .chat-header i {
+            color: #28a745;
+            margin-right: 8px;
+        }
+        
+        .chat-body {
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            max-height: 240px;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.support-message {
+            background: white;
+            color: #333;
+            border: 1px solid #e9ecef;
+        }
+        
+        .message.system-message {
+            background: #e3f2fd;
+            color: #1976d2;
+            text-align: center;
+            font-style: italic;
+            margin: 0 auto;
+        }
+        
+        .chat-input-container {
+            padding: 12px 16px;
+            border-top: 1px solid #e9ecef;
+            background: white;
+        }
+        
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+        
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
     </style>
 
 </head>
@@ -142,6 +244,9 @@
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ route('tickets.index') }}">All Tickets</a></li>
                         <li><a class="dropdown-item" href="{{ route('tickets.create') }}">Create Ticket</a></li>
+                        @can('view-assigned-tickets')
+                        <li><a class="dropdown-item" href="{{ route('tickets.assigned') }}">My Assigned Ticket</a></li>
+                        @endcan
                     </ul>
                 </div>
                 @endcan
@@ -234,15 +339,34 @@
                 <a href="{{ route('profile') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-gear"></i> Settings
                 </a>
-                <button onclick="testNotification()" class="btn btn-outline-info btn-sm">
-                    <i class="bi bi-bell"></i> Test Notification
-                </button>
                 <form method="POST" action="{{ route('logout') }}" class="d-inline">
                     @csrf
                     <button type="submit" class="btn btn-outline-danger btn-sm w-100">
                         <i class="bi bi-box-arrow-right"></i> Logout
                     </button>
                 </form>
+            </div>
+            {{-- chat --}}
+            <div class="chat-widget">
+                <div class="chat-header" onclick="toggleChat()">
+                    <i class="bi bi-chat-dots"></i> Support Chat
+                    <span class="badge bg-success ms-auto" id="chat-status">Online</span>
+                </div>
+                <div class="chat-body" id="chat-body" style="display: none;">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message system-message">
+                            <small class="text-muted">Welcome! How can we help you today?</small>
+                        </div>
+                    </div>
+                    <div class="chat-input-container">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="chat-input" placeholder="Type your message..." onkeypress="handleChatKeyPress(event)">
+                            <button class="btn btn-primary" type="button" onclick="sendMessage()">
+                                <i class="bi bi-send"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div id="stats-container">
@@ -292,6 +416,92 @@
 
     @livewireScripts
     
+    <!-- Custom scripts stack -->
+    @stack('scripts')
+    <script>
+        // Chat functionality
+        let chatOpen = false;
+        
+        function toggleChat() {
+            const chatBody = document.getElementById('chat-body');
+            chatOpen = !chatOpen;
+            
+            if (chatOpen) {
+                chatBody.style.display = 'flex';
+                scrollToBottom();
+                document.getElementById('chat-input').focus();
+            } else {
+                chatBody.style.display = 'none';
+            }
+        }
+        
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (message === '') return;
+            
+            // Add user message
+            addMessage(message, 'user');
+            input.value = '';
+            
+            // Simulate support response (replace with actual chat API)
+            setTimeout(() => {
+                const responses = [
+                    "Thanks for reaching out! How can I assist you?",
+                    "I understand your concern. Let me help you with that.",
+                    "Could you provide more details about your issue?",
+                    "I'll escalate this to our technical team.",
+                    "Is there anything else I can help you with?"
+                ];
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                addMessage(randomResponse, 'support');
+            }, 1000);
+        }
+        
+        function addMessage(text, type) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            const currentTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = `
+                <div>${text}</div>
+                <div class="message-time">${currentTime}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            scrollToBottom();
+        }
+        
+        function scrollToBottom() {
+            const messagesContainer = document.getElementById('chat-messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Initialize chat status
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set online status
+            const statusBadge = document.getElementById('chat-status');
+            const isOnline = true; // You can determine this based on your logic
+            
+            if (isOnline) {
+                statusBadge.textContent = 'Online';
+                statusBadge.className = 'badge bg-success ms-auto';
+            } else {
+                statusBadge.textContent = 'Offline';
+                statusBadge.className = 'badge bg-secondary ms-auto';
+            }
+        });
+        
+        // ...existing code...
+    </script>
     <!-- Notifications will be loaded via Vite in app.js -->
     
     {{-- <script>

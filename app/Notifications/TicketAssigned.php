@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Auth;
 
 class TicketAssigned extends Notification implements ShouldQueue
 {
@@ -40,8 +41,7 @@ class TicketAssigned extends Notification implements ShouldQueue
             'ticket_number' => $this->ticket->ticket_number,
             'title' => $this->ticket->title_ticket,
             'priority' => $this->ticket->priority,
-            'status' => $this->ticket->status,
-            'assigned_by' => auth()->user()->name ?? 'System',
+            'assigned_by' => Auth::user()->name ?? 'System',
             'message' => "Ticket #{$this->ticket->ticket_number} has been assigned to you",
             'type' => 'ticket_assigned',
             'url' => route('tickets.show', $this->ticket),
@@ -56,7 +56,7 @@ class TicketAssigned extends Notification implements ShouldQueue
             'title' => $this->ticket->title_ticket,
             'priority' => $this->ticket->priority,
             'status' => $this->ticket->status,
-            'assigned_by' => auth()->user()->name ?? 'System',
+            'assigned_by' => Auth::user()->name ?? 'System',
             'message' => "Ticket #{$this->ticket->ticket_number} has been assigned to you",
             'type' => 'ticket_assigned',
             'url' => route('tickets.show', $this->ticket),

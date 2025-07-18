@@ -28,6 +28,29 @@ class LoginController extends Controller
     protected $redirectTo = '/home';
 
     /**
+     * Get the post-login redirect path.
+     *
+     * @return string
+     */
+    public function redirectTo()
+    {
+        return '/home';
+    }
+
+    /**
+     * The user has been authenticated.
+     * Override to always redirect to home, ignoring intended URL.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return mixed
+     */
+    protected function authenticated(\Illuminate\Http\Request $request, $user)
+    {
+        return redirect('/home');
+    }
+
+    /**
      * Create a new controller instance.
      *
      * @return void

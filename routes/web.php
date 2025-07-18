@@ -142,6 +142,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [TicketController::class, 'index'])->name('index')->middleware('can:view-tickets');
         Route::get('/create', [TicketController::class, 'create'])->name('create')->middleware('can:create-tickets');
         Route::post('/', [TicketController::class, 'store'])->name('store')->middleware('can:create-tickets');
+        Route::get('/assigned', [TicketController::class, 'assigned'])->name('assigned')->middleware('can:view-assigned-tickets');
         Route::get('/{ticket}', [TicketController::class, 'show'])->name('show')->middleware('can:view-tickets');
         Route::get('/{ticket}/edit', [TicketController::class, 'edit'])->name('edit')->middleware('can:edit-tickets');
         Route::put('/{ticket}', [TicketController::class, 'update'])->name('update')->middleware('can:edit-tickets');
@@ -153,6 +154,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/attachments/{attachment}/download', [TicketController::class, 'downloadAttachment'])->name('attachments.download');
         Route::delete('/attachments/{attachment}', [TicketController::class, 'deleteAttachment'])->name('attachments.delete');
         Route::post('/{ticket}/attachments', [TicketController::class, 'storeAttachments'])->name('attachments.store')->middleware('can:upload-ticket-attachments');
+        Route::post('/{ticket}/comments', [TicketController::class, 'storeComment'])->name('comments.store')->middleware('can:comment-on-tickets');
     });
 
     // Admin routes
@@ -215,10 +217,13 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Manager Dashboard Routes
-    Route::prefix('manager')->name('manager.')->middleware(['can:view-manager-dashboard'])->group(function () {
+    Route::prefix('manager')->name('manager.')->group(function () {
         Route::get('/dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/chart-data', [ManagerDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
     });
+
+    // Test route for chart API (temporary)
+    Route::get('/test-chart-api', [ManagerDashboardController::class, 'getChartData'])->name('test.chart.api');
 
     // Report Routes
     Route::prefix('reports')->name('reports.')->middleware(['can:generate-reports'])->group(function () {

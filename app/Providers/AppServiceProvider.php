@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Tickets;
+use App\Observers\TicketObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 
@@ -21,5 +23,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Paginator::useBootstrapFive();
+        Tickets::observe(TicketObserver::class);
     }
 }

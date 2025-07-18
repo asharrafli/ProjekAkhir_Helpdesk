@@ -201,7 +201,112 @@
                 </div>
             </div>
             @endcan
+            <!-- Reply -->
+         <div class="card mt-4">
+                <div class="card-header">
+                    <h5><i class="bi bi-chat-dots"></i> Comments & Updates</h5>
+                </div>
+                <div class="card-body">
+                    @if($ticket->comments->count() > 0)
+                        <div class="comments-section">
+                            @foreach($ticket->comments as $comment)
+                                @if(!$comment->is_internal || Auth::user()->can('view-internal-notes'))
+                                <div class="comment-item mb-4 {{ $comment->is_internal ? 'border-start border-warning border-3 ps-3' : '' }}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ $comment->user->avatar ?? 'https://ui-avatars.com/api/?name=' . urlencode($comment->user->name) . '&background=random' }}" 
+                                                 class="rounded-circle me-2" width="32" height="32" alt="Avatar">
+                                            <div>
+                                                <strong>{{ $comment->user->name }}</strong>
+                                                @if($comment->user->hasRole('technician'))
+                                                    <span class="badge bg-primary ms-1">Tech</span>
+                                                @elseif($comment->user->hasRole('admin'))
+                                                    <span class="badge bg-danger ms-1">Admin</span>
+                                                @endif
+                                                @if($comment->is_internal)
+                                                    <span class="badge bg-warning ms-1">Internal Note</span>
+                                                @endif
+                                                @if($comment->is_solution)
+                                                    <span class="badge bg-success ms-1">Solution</span>
+                                                @endif
+                                                <br>
+                                                <small class="text-muted">{{ $comment->created_at->format('M j, Y g:i A') }} ({{ $comment->created_at->diffForHumans() }})</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="comment-content {{ $comment->is_internal ? 'bg-warning bg-opacity-10 p-3 rounded' : '' }}">
+                                        {!! nl2br(e($comment->comment)) !!}
+                                    </div>
+                                </div>
+                                <hr>
+                                @endif
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="text-muted text-center py-4">No comments yet. Be the first to comment!</p>
+                    @endif
+
+                    <!-- Add Comment Form -->
+                    @can('comment-on-tickets')
+                    <div class="mt-4">
+                        <h6>Add a Comment</h6>
+                        <form method="POST" action="{{ route('tickets.comments.store', $ticket) }}">
+                            @csrf
+                            <div class="mb-3">
+                                <textarea name="comment" class="form-control" rows="4" 
+                                          placeholder="Type your comment here..." required>{{ old('comment') }}</textarea>
+                                @error('comment')
+                                    <div class="text-danger small">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="row mb-3">
+                                @if(Auth::user()->can('view-internal-notes'))
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="is_internal" id="is_internal" value="1" {{ old('is_internal') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="is_internal">
+                                            <i class="bi bi-lock-fill text-warning"></i> Internal Note
+                                            <small class="text-muted d-block">Only visible to technicians and admins</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                @endif
+                                
+                                @if(Auth::user()->hasRole(['technician', 'admin']) && $ticket->status != 'resolved' && $ticket->status != 'closed')
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="is_solution" id="is_solution" value="1" {{ old('is_solution') ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="is_solution">
+                                            <i class="bi bi-check-circle-fill text-success"></i> Mark as Solution
+                                            <small class="text-muted d-block">This will resolve the ticket</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                @endif
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Post Comment
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="document.querySelector('textarea[name=comment]').value=''">
+                                    <i class="bi bi-x-circle"></i> Clear
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    @else
+                        <div class="alert alert-info mt-4">
+                            <i class="bi bi-info-circle"></i> You don't have permission to comment on tickets.
+                        </div>
+                    @endcan
+                </div>
+            </div>
         </div>
+
+        
 
         <!-- Sidebar -->
         <div class="col-md-4">
