@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ChatRoom;
 use Illuminate\Support\Facades\Broadcast;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -52,4 +53,15 @@ Broadcast::channel('notifications.{userId}', function ($user, $userId) {
         'authorized' => $user && (int) $user->id === (int) $userId
     ]);
     return $user && (int) $user->id === (int) $userId;
+});
+
+Broadcast::channel('chat-room.{roomId}', function ($user, $roomId) {
+    $room = ChatRoom::find($roomId);
+    
+    if (!$room) {
+        return false;
+    }
+    
+    // Check if user can access this chat room
+    return $room->canAccess($user);
 });

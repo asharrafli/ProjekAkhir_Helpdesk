@@ -81,4 +81,13 @@ class User extends Authenticatable
     {
         return $this->is_admin || $this->hasRole(['super-admin', 'admin']);
     }
+    public function customerChats(){
+        return $this->hasMany(ChatRoom::class, 'customer_id');
+    }
+    public function technicianChats(){
+        return $this->hasMany(ChatRoom::class, 'technician_id');
+    }
+    public function sentMessages(){
+        return $this->hasMany(ChatMessage::class, 'sender_id');
+    }
 }

@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ManagerDashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\SubcategoryController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TestNotificationController;
@@ -41,6 +42,18 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
         Route::delete('/{id}', [NotificationController::class, 'destroy'])->name('destroy');
+    });
+    //Chat Routes
+    Route::prefix('chat')->name('chat.')->group(function () {
+        Route::get('/', [ChatController::class, 'index'])->name('index');
+        Route::get('/rooms', [ChatController::class, 'getUserChats'])->name('rooms');
+        Route::post('/customer-support', [ChatController::class, 'createCustomerSupportRoom'])->name('customer.create');
+        Route::post('/chat/technician-room', [ChatController::class, 'createTechnicianRoom']); // Pastikan route ini ada
+        Route::post('/technician-room', [ChatController::class, 'createTechnicianRoom'])->name('technician.create');
+        Route::post('/message', [ChatController::class, 'sendMessage'])->name('message.send');
+        Route::get('/room/{roomId}/messages', [ChatController::class, 'getRoomMessages'])->name('room.messages');
+        Route::get('/admin/users', [ChatController::class, 'getAllUsersForAdmin'])->name('admin.users');
+
     });
 
     // Test notification routes (for debugging)
@@ -169,6 +182,7 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{user}', [UserController::class, 'update'])->name('update')->middleware('can:edit-users');
             Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy')->middleware('can:delete-users');
         });
+        
 
         // Category management
         Route::prefix('categories')->name('categories.')->middleware(['can:manage-categories'])->group(function () {
@@ -220,6 +234,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('manager')->name('manager.')->group(function () {
         Route::get('/dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/chart-data', [ManagerDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
+        Route::post('/dashboard/export-pdf', [ManagerDashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
     });
 
     // Test route for chart API (temporary)

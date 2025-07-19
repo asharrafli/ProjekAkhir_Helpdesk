@@ -965,17 +965,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function generatePDFReport() {
-        const params = new URLSearchParams({
-            period: currentPeriod
-        });
-        
-        if (currentStartDate && currentEndDate) {
-            params.append('start_date', currentStartDate);
-            params.append('end_date', currentEndDate);
-        }
-
-        // For now, just show alert. You can implement PDF generation later
-        alert('PDF export functionality will be implemented');
+    console.log('Generating PDF report...');
+    
+    // Show loading state
+    const exportBtn = document.getElementById('exportBtn');
+    const originalText = exportBtn.innerHTML;
+    exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating PDF...';
+    exportBtn.disabled = true;
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('period', currentPeriod);
+    
+    if (currentStartDate && currentEndDate) {
+    formData.append('start_date', currentStartDate);
+    formData.append('end_date', currentEndDate);
+    }
+    
+    // Create a form and submit it to trigger download
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("manager.dashboard.export-pdf") }}';
+    form.style.display = 'none';
+    
+    // Add form data as hidden inputs
+    for (let [key, value] of formData.entries()) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+    }
+    
+    document.body.appendChild(form);
+    
+    // Handle form submission with error handling
+    try {
+    form.submit();
+    
+    // Show success message after a delay
+    setTimeout(() => {
+    console.log('PDF export initiated successfully');
+    }, 1000);
+    
+    } catch (error) {
+    console.error('Error submitting PDF export form:', error);
+    alert('Error exporting PDF: ' + error.message);
+    } finally {
+    // Clean up
+    document.body.removeChild(form);
+    
+    // Reset button after a delay
+    setTimeout(() => {
+    exportBtn.innerHTML = originalText;
+    exportBtn.disabled = false;
+    }, 3000);
+    }
     }
 
     // Load technician performance metrics table

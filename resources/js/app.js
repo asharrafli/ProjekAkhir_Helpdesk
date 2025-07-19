@@ -1,5 +1,6 @@
 import './bootstrap';
 import './notifications'; 
+import './chat';
 
 // Atau tambahkan langsung di sini:
 console.log('🚀 app.js loaded');

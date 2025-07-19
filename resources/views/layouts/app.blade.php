@@ -209,6 +209,40 @@
         .chat-messages::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+
+        /* Add this to your existing CSS in the <style> section */
+        .room-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .room-item:hover {
+            background-color: #f8f9fa !important;
+        }
+
+        .chat-room-header {
+            background: #f8f9fa;
+        }
+
+        .chat-room-info {
+            background: #f8f9fa;
+        }
+
+        .message-sender {
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #495057;
+        }
+
+        .new-chat-modal {
+            background: white;
+            height: 100%;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
     </style>
 
 </head>
@@ -349,22 +383,123 @@
             {{-- chat --}}
             <div class="chat-widget">
                 <div class="chat-header" onclick="toggleChat()">
-                    <i class="bi bi-chat-dots"></i> Support Chat
+                    <i class="bi bi-chat-dots"></i>
+                    @if(Auth::user()->isSuperAdmin())
+                    Admin Chat Center
+                    @elseif(Auth::user()->hasRole('technician'))
+                    Technician Support
+                    @else
+                    Customer Support
+                    @endif
                     <span class="badge bg-success ms-auto" id="chat-status">Online</span>
+                    <span class="badge bg-primary ms-1" id="unread-messages" style="display: none;">0</span>
                 </div>
+            
                 <div class="chat-body" id="chat-body" style="display: none;">
-                    <div class="chat-messages" id="chat-messages">
-                        <div class="message system-message">
-                            <small class="text-muted">Welcome! How can we help you today?</small>
+                    <!-- Chat Room List -->
+                    <div class="chat-room-list" id="chat-room-list">
+                        <div class="chat-room-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                            <h6 class="mb-0">
+                                @if(Auth::user()->isSuperAdmin())
+                                All Conversations
+                                @elseif(Auth::user()->hasRole('technician'))
+                                My Support Chats
+                                @else
+                                Support Tickets
+                                @endif
+                            </h6>
+                            @if(!Auth::user()->isSuperAdmin())
+                            <button class="btn btn-sm btn-primary" onclick="createNewChat()">
+                                <i class="bi bi-plus"></i> New
+                            </button>
+                            @endif
+                        </div>
+                        <div class="room-list-container" id="room-list-container">
+                            <div class="text-center p-3 text-muted">Loading chats...</div>
                         </div>
                     </div>
-                    <div class="chat-input-container">
-                        <div class="input-group input-group-sm">
-                            <input type="text" class="form-control" id="chat-input" placeholder="Type your message..." onkeypress="handleChatKeyPress(event)">
-                            <button class="btn btn-primary" type="button" onclick="sendMessage()">
-                                <i class="bi bi-send"></i>
+            
+                    <!-- Active Chat Room -->
+                    <div class="active-chat-room" id="active-chat-room" style="display: none;">
+                        <div class="chat-room-info p-2 border-bottom bg-light">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showRoomList()">
+                                    <i class="bi bi-arrow-left"></i>
+                                </button>
+                                <div class="flex-grow-1 ms-2">
+                                    <div class="fw-bold" id="active-room-name">Chat Room</div>
+                                    <div class="small text-muted" id="active-room-info">Loading...</div>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="closeCurrentRoom()">
+                                                <i class="bi bi-x-circle"></i> Close Chat
+                                            </a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+            
+                        <div class="chat-messages" id="chat-messages">
+                            <!-- Messages will be loaded here -->
+                        </div>
+            
+                        <div class="chat-input-container">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="chat-input" placeholder="Type your message..."
+                                    onkeypress="handleChatKeyPress(event)">
+                                <button class="btn btn-primary" type="button" onclick="sendChatMessage()">
+                                    <i class="bi bi-send"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+            
+                    <!-- New Chat Modal Content -->
+                    <div class="new-chat-modal" id="new-chat-modal" style="display: none;">
+                        @if(!Auth::user()->hasRole('technician'))
+                        <div class="p-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Start New Support Chat</h6>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showRoomList()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <form id="new-chat-form">
+                                <div class="mb-3">
+                                    <label class="form-label">Ticket Number</label>
+                                    <input type="text" class="form-control" id="ticket-id-input" 
+                                    placeholder="Enter your ticket Number (e.g. SLX20250718-0001)"
+                                        required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Your Full Name</label>
+                                    <input type="text" class="form-control" id="customer-name-input" placeholder="Enter your full name"
+                                        required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Start Chat</button>
+                            </form>
+                        </div>
+                        @else
+                        <div class="p-3 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Connect with Admin</h6>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showRoomList()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <button class="btn btn-primary w-100" onclick="createTechnicianRoom()">
+                                Start Chat with Admin
                             </button>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -418,348 +553,569 @@
     
     <!-- Custom scripts stack -->
     @stack('scripts')
+    
+    <!-- Enhanced Hierarchical Chat JavaScript -->
     <script>
-        // Chat functionality
-        let chatOpen = false;
-        
-        function toggleChat() {
-            const chatBody = document.getElementById('chat-body');
-            chatOpen = !chatOpen;
+        class HierarchicalChatManager {
+            constructor() {
+                this.currentRoom = null;
+                this.rooms = [];
+                this.userType = null;
+                this.chatOpen = false;
+                this.initialize();
+            }
+
+            async initialize() {
+                await this.loadRooms();
+                this.setupEventListeners();
+                this.setupPusherChannels();
+            }
+
+            async loadRooms() {
+                try {
+                    const response = await fetch('/chat/rooms', {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    this.rooms = data.rooms || [];
+                    this.userType = data.user_type;
+                    this.renderRoomList();
+                    this.updateUnreadBadge();
+                } catch (error) {
+                    console.error('Error loading rooms:', error);
+                }
+            }
+
+            renderRoomList() {
+                const container = document.getElementById('room-list-container');
+                if (!container) return;
+
+                if (this.rooms.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center p-3 text-muted">
+                            <i class="bi bi-chat-dots fs-1 d-block mb-2"></i>
+                            No active chats
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                this.rooms.forEach(room => {
+                    const lastMessage = room.messages && room.messages.length > 0 ? room.messages[0] : null;
+                    const unreadCount = this.getUnreadCount(room.id);
+                    
+                    html += `
+                        <div class="room-item p-3 border-bottom cursor-pointer ${unreadCount > 0 ? 'bg-light' : ''}" 
+                             onclick="openChatRoom(${room.id})">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">${room.name}</div>
+                                    <div class="small text-muted">
+                                        ${this.getRoomTypeLabel(room)}
+                                    </div>
+                                    ${lastMessage ? `
+                                        <div class="small mt-1">${lastMessage.message.substring(0, 50)}...</div>
+                                    ` : ''}
+                                </div>
+                                <div class="text-end">
+                                    ${unreadCount > 0 ? `<span class="badge bg-primary rounded-pill">${unreadCount}</span>` : ''}
+                                    <div class="small text-muted">
+                                        ${lastMessage ? this.formatTime(lastMessage.created_at) : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            getRoomTypeLabel(room) {
+                if (room.type === 'customer_support') {
+                    if (room.ticket) {
+                        return `Ticket #${room.ticket.id}`;
+                    }
+                    return 'Customer Support';
+                } else if (room.type === 'technician_admin') {
+                    if (room.technician) {
+                        return `Technician: ${room.technician.name}`;
+                    }
+                    return 'Technician Chat';
+                }
+                return 'Chat';
+            }
+
+            async openChatRoom(roomId) {
+                try {
+                    const response = await fetch(`/chat/room/${roomId}/messages`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    this.currentRoom = data.room;
+                    this.renderChatRoom(data.messages);
+                    this.showChatRoom();
+                    this.setupRoomChannel(data.room.id);
+                } catch (error) {
+                    console.error('Error loading chat room:', error);
+                }
+            }
+
+            renderChatRoom(messages) {
+                const container = document.getElementById('chat-messages');
+                const roomName = document.getElementById('active-room-name');
+                const roomInfo = document.getElementById('active-room-info');
+                
+                if (roomName && this.currentRoom) {
+                    roomName.textContent = this.currentRoom.name;
+                }
+                
+                if (roomInfo && this.currentRoom) {
+                    roomInfo.textContent = this.getRoomTypeLabel(this.currentRoom);
+                }
+
+                if (!container) return;
+
+                container.innerHTML = '';
+                messages.forEach(message => {
+                    this.addMessageToUI(message);
+                });
+                
+                this.scrollToBottom();
+            }
+
+            addMessageToUI(message) {
+                const container = document.getElementById('chat-messages');
+                if (!container) return;
+
+                const messageDiv = document.createElement('div');
+                const isOwnMessage = message.sender.id === window.Laravel.user.id;
+                
+                let messageClass = 'message ';
+                if (isOwnMessage) {
+                    messageClass += 'user-message';
+                } else {
+                    messageClass += 'support-message';
+                }
+
+                messageDiv.className = messageClass;
+                messageDiv.innerHTML = `
+                    <div class="message-content">
+                        ${!isOwnMessage ? `<div class="message-sender">${message.sender.name} (${message.sender_type})</div>` : ''}
+                        <div class="message-text">${message.message}</div>
+                        <div class="message-time">${this.formatTime(message.created_at)}</div>
+                    </div>
+                `;
+                
+                container.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('chat-input');
+                const message = input.value.trim();
+                
+                if (!message || !this.currentRoom) return;
+                
+                try {
+                    const response = await fetch('/chat/message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            room_id: this.currentRoom.id,
+                            message: message
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        input.value = '';
+                        // Message will be added via Pusher event
+                    }
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                }
+            }
+           async createNewChat() {
+            console.log('createNewChat called');
             
-            if (chatOpen) {
-                chatBody.style.display = 'flex';
-                scrollToBottom();
-                document.getElementById('chat-input').focus();
-            } else {
-                chatBody.style.display = 'none';
+            const ticketIdInput = document.getElementById('ticket-id-input');
+            const customerNameInput = document.getElementById('customer-name-input');
+            
+            console.log('Form elements:', {
+            ticketIdInput: ticketIdInput,
+            customerNameInput: customerNameInput
+            });
+            
+            if (!ticketIdInput || !customerNameInput) {
+            console.error('Form elements not found!');
+            alert('Form elements not found. Please refresh the page.');
+            return;
+            }
+            
+            const ticketId = ticketIdInput.value?.trim();
+            const customerName = customerNameInput.value?.trim();
+            
+            console.log('Form values:', { ticketId, customerName });
+            
+            if (!ticketId || !customerName) {
+            alert('Please fill in both Ticket ID and Customer Name');
+            return;
+            }
+            
+            try {
+            console.log('Sending request with data:', { ticketId, customerName });
+            
+            const response = await fetch('/chat/customer-support', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+            ticket_id: ticketId,
+            customer_name: customerName
+            })
+            });
+            
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Server error response:', errorText);
+                try {
+                    const errorData = JSON.parse(errorText);
+                    console.error('Parsed error:', errorData);
+                    if (errorData.error) {
+                        alert('Error: ' + errorData.error);
+                    } else {
+                        alert('Server error: ' + errorData.message || 'Unknown error');
+                    }
+                } catch (parseError) {
+            console.error('Could not parse error response:', parseError);
+            alert('Server error: ' + response.status + ' - Check console for details');
+            }
+            return;
+            }
+            
+            const data = await response.json();
+            console.log('Success response:', data);
+            
+            if (data.room) {
+            // Clear form
+            ticketIdInput.value = '';
+            customerNameInput.value = '';
+            
+            await this.loadRooms();
+            this.openChatRoom(data.room.id);
+            } else if (data.error) {
+            alert('Error: ' + data.error);
+            }
+            } catch (error) {
+            console.error('Network error:', error);
+            alert('Network error: ' + error.message);
+            }
+            }
+
+            async createCustomerSupportChat(ticketId, customerName) {
+                try {
+                    const response = await fetch('/chat/customer-support', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            ticket_id: ticketId,
+                            customer_name: customerName
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.room) {
+                        await this.loadRooms();
+                        this.openChatRoom(data.room.id);
+                    }
+                } catch (error) {
+                    console.error('Error creating customer support chat:', error);
+                }
+            }
+
+            async createTechnicianRoom() {
+                console.log('createTechnicianRoom called');
+                try {
+                    console.log('Sending request to /chat/technician-room');
+                    const response = await fetch('/chat/technician-room', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    console.log('Response status:', response.status);
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    if (data.room) {
+                        console.log('Room created successfully:', data.room);
+                        await this.loadRooms();
+                        this.openChatRoom(data.room.id);
+                    } else {
+                        console.error('No room in response:', data);
+                        alert('Error: No room created. Check console for details.');
+                    }
+                } catch (error) {
+                    console.error('Error creating technician room:', error);
+                    alert('Error creating technician room: ' + error.message);
+                }
+            }
+
+            setupEventListeners() {
+                const newChatForm = document.getElementById('new-chat-form');
+                if (newChatForm) {
+                    newChatForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        console.log('Form submitted');
+                        this.createNewChat(); // Panggil method createNewChat yang sudah ada
+                    });
+            }
+            }
+
+            setupPusherChannels() {
+                if (!window.Echo) return;
+
+                // Listen for new messages in current room
+                if (this.currentRoom) {
+                    this.setupRoomChannel(this.currentRoom.id);
+                }
+
+                // Listen for global chat events
+                const userId = window.Laravel.user.id;
+                window.Echo.private(`user.${userId}`)
+                    .listen('MessageSent', (e) => {
+                        if (e.message.chat_room_id === this.currentRoom?.id) {
+                            this.addMessageToUI(e);
+                        }
+                        this.loadRooms(); // Refresh room list
+                    });
+            }
+
+            setupRoomChannel(roomId) {
+                if (window.Echo) {
+                    window.Echo.private(`chat-room.${roomId}`)
+                        .listen('MessageSent', (e) => {
+                            this.addMessageToUI(e);
+                        });
+                }
+            }
+
+            showRoomList() {
+                document.getElementById('chat-room-list').style.display = 'block';
+                document.getElementById('active-chat-room').style.display = 'none';
+                document.getElementById('new-chat-modal').style.display = 'none';
+                this.currentRoom = null;
+            }
+
+            showChatRoom() {
+                document.getElementById('chat-room-list').style.display = 'none';
+                document.getElementById('active-chat-room').style.display = 'block';
+                document.getElementById('new-chat-modal').style.display = 'none';
+                setTimeout(() => {
+                    document.getElementById('chat-input')?.focus();
+                }, 100);
+            }
+
+            showNewChatModal() {
+                document.getElementById('chat-room-list').style.display = 'none';
+                document.getElementById('active-chat-room').style.display = 'none';
+                document.getElementById('new-chat-modal').style.display = 'block';
+            }
+
+            getUnreadCount(roomId) {
+                return 0; // Placeholder
+            }
+
+            updateUnreadBadge() {
+                const totalUnread = this.rooms.reduce((total, room) => {
+                    return total + this.getUnreadCount(room.id);
+                }, 0);
+
+                const badge = document.getElementById('unread-messages');
+                if (totalUnread > 0) {
+                    badge.textContent = totalUnread;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            formatTime(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+
+            scrollToBottom() {
+                const container = document.getElementById('chat-messages');
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
             }
         }
-        
+
+        // Global chat manager instance
+        let hierarchicalChatManager;
+
+        // Global functions for onclick events
+        function toggleChat() {
+            const chatBody = document.getElementById('chat-body');
+            const isOpen = chatBody.style.display !== 'none';
+            
+            if (isOpen) {
+                chatBody.style.display = 'none';
+            } else {
+                chatBody.style.display = 'flex';
+                if (!hierarchicalChatManager) {
+                    hierarchicalChatManager = new HierarchicalChatManager();
+                } else {
+                    hierarchicalChatManager.showRoomList();
+                }
+            }
+        }
+
+        function openChatRoom(roomId) {
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.openChatRoom(roomId);
+            }
+        }
+
+        function createNewChat() {
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.showNewChatModal();
+            }
+        }
+
+        function createTechnicianRoom() {
+            console.log('Global createTechnicianRoom called');
+            console.log('hierarchicalChatManager:', hierarchicalChatManager);
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.createTechnicianRoom();
+            } else {
+                console.error('hierarchicalChatManager is not initialized');
+                alert('Chat manager not initialized. Please refresh the page.');
+            }
+        }
+
+        function showRoomList() {
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.showRoomList();
+            }
+        }
+
+        function sendChatMessage() {
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.sendMessage();
+            }
+        }
+
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+
+        function closeCurrentRoom() {
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.showRoomList();
+            }
+        }
+
+        // Debug function
+        function debugChat() {
+            console.log('=== CHAT DEBUG INFO ===');
+            console.log('hierarchicalChatManager:', hierarchicalChatManager);
+            console.log('window.Laravel:', window.Laravel);
+            console.log('CSRF Token:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+            console.log('Current URL:', window.location.href);
+            
+            // Test basic fetch
+            fetch('/chat/rooms', {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => {
+                console.log('Test fetch status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Test fetch data:', data);
+            })
+            .catch(error => {
+                console.error('Test fetch error:', error);
+            });
+        }
+
+        // Keep existing chat functions for backward compatibility
         function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const message = input.value.trim();
-            
-            if (message === '') return;
-            
-            // Add user message
-            addMessage(message, 'user');
-            input.value = '';
-            
-            // Simulate support response (replace with actual chat API)
-            setTimeout(() => {
-                const responses = [
-                    "Thanks for reaching out! How can I assist you?",
-                    "I understand your concern. Let me help you with that.",
-                    "Could you provide more details about your issue?",
-                    "I'll escalate this to our technical team.",
-                    "Is there anything else I can help you with?"
-                ];
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                addMessage(randomResponse, 'support');
-            }, 1000);
+            sendChatMessage();
         }
         
         function addMessage(text, type) {
-            const messagesContainer = document.getElementById('chat-messages');
-            const messageDiv = document.createElement('div');
-            const currentTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            messageDiv.className = `message ${type}-message`;
-            messageDiv.innerHTML = `
-                <div>${text}</div>
-                <div class="message-time">${currentTime}</div>
-            `;
-            
-            messagesContainer.appendChild(messageDiv);
-            scrollToBottom();
+            if (hierarchicalChatManager && hierarchicalChatManager.currentRoom) {
+                const message = {
+                    message: text,
+                    sender: window.Laravel.user,
+                    sender_type: type,
+                    created_at: new Date().toISOString()
+                };
+                hierarchicalChatManager.addMessageToUI(message);
+            }
         }
         
         function scrollToBottom() {
-            const messagesContainer = document.getElementById('chat-messages');
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        function handleChatKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
+            if (hierarchicalChatManager) {
+                hierarchicalChatManager.scrollToBottom();
             }
         }
         
         // Initialize chat status
         document.addEventListener('DOMContentLoaded', function() {
-            // Set online status
             const statusBadge = document.getElementById('chat-status');
-            const isOnline = true; // You can determine this based on your logic
-            
-            if (isOnline) {
-                statusBadge.textContent = 'Online';
-                statusBadge.className = 'badge bg-success ms-auto';
-            } else {
-                statusBadge.textContent = 'Offline';
-                statusBadge.className = 'badge bg-secondary ms-auto';
+            if (statusBadge) {
+                const isOnline = true;
+                
+                if (isOnline) {
+                    statusBadge.textContent = 'Online';
+                    statusBadge.className = 'badge bg-success ms-auto';
+                } else {
+                    statusBadge.textContent = 'Offline';
+                    statusBadge.className = 'badge bg-secondary ms-auto';
+                }
             }
         });
-        
-        // ...existing code...
-    </script>
-    <!-- Notifications will be loaded via Vite in app.js -->
-    
-    {{-- <script>
-        // Initialize sortable for stats cards
-        document.addEventListener('DOMContentLoaded', function() {
-            const statsContainer = document.getElementById('stats-container');
-            if (statsContainer) {
-                new Sortable(statsContainer, {
-                    animation: 150,
-                    ghostClass: 'sortable-ghost',
-                    onEnd: function(evt) {
-                        // Save new order to localStorage or send to server
-                        const cardOrder = Array.from(statsContainer.children).map(card => card.dataset.cardId);
-                        localStorage.setItem('stats-card-order', JSON.stringify(cardOrder));
-                    }
-                });
-            }
 
-            // Initialize notification system
-            initializeNotifications();
-        });
+       
+        </script>
 
-        function initializeNotifications() {
-            // Debug Pusher connection
-            console.log('Initializing notifications...');
-            console.log('Echo available:', !!window.Echo);
-            
-            if (window.Echo) {
-                console.log('Pusher state:', window.Echo.connector.pusher.connection.state);
-                
-                // Listen for connection events
-                window.Echo.connector.pusher.connection.bind('connected', function() {
-                    console.log('Pusher connected successfully!');
-                });
-                
-                window.Echo.connector.pusher.connection.bind('disconnected', function() {
-                    console.log('Pusher disconnected');
-                });
-                
-                window.Echo.connector.pusher.connection.bind('error', function(err) {
-                    console.error('Pusher connection error:', err);
-                });
-            }
-            
-            // Load unread notifications count
-            loadUnreadCount();
-            
-            // Load notifications when dropdown is opened
-            const notificationBell = document.getElementById('notificationBell');
-            if (notificationBell) {
-                notificationBell.addEventListener('click', function() {
-                    loadNotifications();
-                });
-            }
-            
-            // Listen for new notifications via Pusher
-            @auth
-            if (window.Echo) {
-                console.log('Setting up private channel for user {{ Auth::id() }}');
-                
-                // Test both channel names
-                window.Echo.private(`App.Models.User.{{ Auth::id() }}`)
-                    .notification((notification) => {
-                        console.log('New notification received (App.Models.User):', notification);
-                        showToast(notification.message || 'You have a new notification!');
-                        loadUnreadCount();
-                        updateNotificationDropdown(notification);
-                    });
-                
-                // Also try listening to public tickets channel
-                window.Echo.channel('tickets')
-                    .listen('.ticket.created', (e) => {
-                        console.log('Ticket created event received:', e);
-                        showToast('New ticket created: ' + e.message);
-                        loadUnreadCount();
-                    });
-            } else {
-                console.error('Echo is not available. Check if Pusher is loaded correctly.');
-            }
-            @endauth
-            
-            // Refresh notifications every 30 seconds
-            setInterval(loadUnreadCount, 30000);
-        }
-
-        function loadUnreadCount() {
-            fetch('{{ route("notifications.unread-count") }}', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                const badge = document.getElementById('unreadBadge');
-                if (badge) {
-                    if (data.count > 0) {
-                        badge.textContent = data.count;
-                        badge.style.display = 'inline-block';
-                    } else {
-                        badge.style.display = 'none';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error loading unread count:', error);
-            });
-        }
-
-        function loadNotifications() {
-            fetch('{{ route("notifications.index") }}', {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                updateNotificationList(data.notifications || []);
-            })
-            .catch(error => {
-                console.error('Error loading notifications:', error);
-                document.getElementById('notificationDropdown').innerHTML = 
-                    '<li><span class="dropdown-item-text text-danger">Error loading notifications</span></li>';
-            });
-        }
-
-        function updateNotificationList(notifications) {
-            const dropdown = document.getElementById('notificationDropdown');
-            if (!dropdown) return;
-
-            if (notifications.length === 0) {
-                dropdown.innerHTML = '<li><span class="dropdown-item-text text-muted">No notifications</span></li>';
-                return;
-            }
-
-            let html = '';
-            notifications.forEach(notification => {
-                const isUnread = !notification.read_at;
-                const data = notification.data || {};
-                
-                html += `
-                    <li>
-                        <a class="dropdown-item ${isUnread ? 'fw-bold bg-light' : ''}" href="#" onclick="markAsRead('${notification.id}')">
-                            <div class="d-flex align-items-start">
-                                <i class="bi bi-bell me-2 mt-1"></i>
-                                <div class="flex-grow-1">
-                                    <div class="small">${data.message || 'New notification'}</div>
-                                    <div class="text-muted" style="font-size: 0.75rem;">
-                                        ${formatTimeAgo(notification.created_at)}
-                                    </div>
-                                </div>
-                                ${isUnread ? '<span class="badge bg-primary rounded-pill">New</span>' : ''}
-                            </div>
-                        </a>
-                    </li>
-                `;
-            });
-
-            html += `
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-center" href="#" onclick="markAllAsRead()">Mark all as read</a></li>
-            `;
-
-            dropdown.innerHTML = html;
-        }
-
-        function updateNotificationDropdown(newNotification) {
-            // Add new notification to the top of dropdown if it's open
-            const dropdown = document.getElementById('notificationDropdown');
-            if (dropdown && dropdown.classList.contains('show')) {
-                loadNotifications(); // Reload all notifications
-            }
-        }
-
-        function markAsRead(notificationId) {
-            fetch(`{{ url('notifications') }}/${notificationId}/read`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    loadUnreadCount();
-                    loadNotifications();
-                }
-            })
-            .catch(error => console.error('Error marking notification as read:', error));
-        }
-
-        function markAllAsRead() {
-            fetch('{{ route("notifications.mark-all-read") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    loadUnreadCount();
-                    loadNotifications();
-                    showToast('All notifications marked as read');
-                }
-            })
-            .catch(error => console.error('Error marking all as read:', error));
-        }
-
-        function showToast(message) {
-            // Create toast container if it doesn't exist
-            let toastContainer = document.getElementById('toast-container');
-            if (!toastContainer) {
-                toastContainer = document.createElement('div');
-                toastContainer.id = 'toast-container';
-                toastContainer.className = 'position-fixed top-0 end-0 p-3';
-                toastContainer.style.zIndex = '9999';
-                document.body.appendChild(toastContainer);
-            }
-
-            // Create toast
-            const toast = document.createElement('div');
-            toast.className = 'toast show align-items-center text-white bg-primary border-0';
-            toast.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="bi bi-bell-fill me-2"></i>${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
-                </div>
-            `;
-            
-            toastContainer.appendChild(toast);
-            
-            // Remove toast after 5 seconds
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.remove();
-                }
-            }, 5000);
-        }
-
-        function formatTimeAgo(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffInSeconds = Math.floor((now - date) / 1000);
-
-            if (diffInSeconds < 60) return 'Just now';
-            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-            return `${Math.floor(diffInSeconds / 86400)}d ago`;
-        }
-    </script> --}}
+    <!-- Keep existing notification scripts -->
     @auth
     <script>
         window.Laravel = {
@@ -771,18 +1127,16 @@
             }
         };
         
-        // Debug log
         console.log('✅ Laravel user set:', window.Laravel.user);
     </script>
     @endauth
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize notification manager
             if (typeof NotificationManager !== 'undefined') {
                 window.notificationManager = new NotificationManager();
                 console.log('✅ NotificationManager initialized and available globally');
                 
-                // Debug Pusher connection
                 if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
                     console.log('Pusher connection state:', window.Echo.connector.pusher.connection.state);
                     
@@ -799,7 +1153,6 @@
             }
         });
 
-        // Make notification functions available globally
         window.showNotificationToast = function(title, message, type = 'info') {
             if (window.notificationManager) {
                 window.notificationManager.showToast(title, message, type);
@@ -808,13 +1161,10 @@
             }
         };
 
-        // Test notification function
         window.testNotification = function() {
             if (window.notificationManager) {
-                // Show local toast first
                 window.notificationManager.showToast('Test Notification', 'This is a test notification from the system.', 'success');
                 
-                // Also trigger backend notification
                 fetch('/admin/test/trigger-notification', {
                     method: 'GET',
                     headers: {
@@ -838,7 +1188,6 @@
             }
         };
     </script>
-
 
 </body>
 </html>
