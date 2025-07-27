@@ -58,7 +58,7 @@
                                         <td>
                                             <div class="btn-group" role="group">
                                                 <a href="{{ route('admin.roles.edit', $role) }}" class="btn btn-sm btn-warning">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="bi bi-pencil-square"></i>
                                                 </a>
                                                 @if($role->name !== 'super-admin')
                                                     <form action="{{ route('admin.roles.destroy', $role) }}" method="POST" class="d-inline">
@@ -66,7 +66,7 @@
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-sm btn-danger" 
                                                                 onclick="return confirm('Are you sure you want to delete this role?')">
-                                                            <i class="fas fa-trash"></i>
+                                                            <i class="bi bi-trash"></i>
                                                         </button>
                                                     </form>
                                                 @endif

@@ -50,14 +50,14 @@
                                         <td>
                                             <div class="btn-group" role="group">
                                                 <a href="{{ route('admin.permissions.edit', $permission) }}" class="btn btn-sm btn-warning">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="bi bi-pencil-square"></i>
                                                 </a>
                                                 <form action="{{ route('admin.permissions.destroy', $permission) }}" method="POST" class="d-inline">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-danger" 
                                                             onclick="return confirm('Are you sure you want to delete this permission?')">
-                                                        <i class="fas fa-trash"></i>
+                                                        <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
                                             </div>

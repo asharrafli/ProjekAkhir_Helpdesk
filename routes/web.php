@@ -24,7 +24,9 @@ use App\Models\Tickets;
 use Illuminate\Notifications\Events\NotificationSent;
 
 Route::get('/', function () {
-    return view('welcome');
+    return Auth::check() 
+        ? redirect()->route('home') 
+        : redirect()->route('login');
 });
 
 Auth::routes();
