@@ -58,7 +58,7 @@
                     @endif
 
                     <!-- File Attachments -->
-                    @if($ticket->hasAttachments())
+                    @if($ticket->attachments && $ticket->attachments->count() > 0)
                     <div class="mb-4">
                         <h5><i class="bi bi-paperclip"></i> Attachments</h5>
                         <div class="row">
@@ -67,14 +67,26 @@
                                 <div class="card card-body bg-light">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
+                                            @if($attachment->isImage())
+                                            <i class="bi bi-image text-primary"></i>
+                                            @else
                                             <i class="bi bi-file-earmark"></i>
+                                            @endif
                                             <strong>{{ $attachment->original_name }}</strong>
                                             <br>
                                             <small class="text-muted">
-                                                {{ $attachment->getFormattedFileSize() }} • 
-                                                Uploaded by {{ $attachment->uploadedBy->name }} • 
+                                                {{ $attachment->getFormattedFileSize() }} •
+                                                Uploaded by {{ $attachment->uploadedBy->name }} •
                                                 {{ $attachment->created_at->format('M j, Y') }}
                                             </small>
+                    
+                                            <!-- Preview gambar jika file adalah image -->
+                                            @if($attachment->isImage())
+                                            <div class="mt-2">
+                                                <img src="{{ $attachment->getDownloadUrl() }}" class="img-thumbnail"
+                                                    style="max-width: 200px; max-height: 150px;" alt="{{ $attachment->original_name }}">
+                                            </div>
+                                            @endif
                                         </div>
                                         <div>
                                             <a href="{{ route('tickets.attachments.download', $attachment) }}" 

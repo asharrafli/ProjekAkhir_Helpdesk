@@ -22,7 +22,7 @@ class ManagerDashboardController extends Controller
         $dashboardData = [
             'total_tickets' => Tickets::count(),
             'open_tickets' => Tickets::whereIn('status', ['open', 'in_progress', 'pending'])->count(),
-            'closed_tickets' => Tickets::where('status', 'closed')->count(),
+            'closed_tickets' => Tickets::whereIn('status', ['closed', 'resolved'])->count(),
             'overdue_tickets' => Tickets::where('due_date', '<', now())->whereNotIn('status', ['closed', 'resolved'])->count(),
             'recent_activities' => Tickets::with('assignedTo')->orderBy('updated_at', 'desc')->take(10)->get()
         ];

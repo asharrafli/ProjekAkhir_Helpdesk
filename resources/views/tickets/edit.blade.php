@@ -127,7 +127,7 @@
                         </div>
 
                         <!-- Current Attachments -->
-                        @if($ticket->hasAttachments())
+                        @if($ticket->attachments && $ticket->attachments->count() > 0)
                         <div class="mb-3">
                             <h5>Current Attachments</h5>
                             <div class="row">
