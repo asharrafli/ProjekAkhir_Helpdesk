@@ -182,9 +182,26 @@ class SimpleUserIndex extends Component
 
     public function render()
     {
+        $roles = Role::orderBy('name')->get();
+
+         $users = User::with(['roles'])
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('email', 'like', '%' . $this->search . '%');
+                });
+            })
+            ->when($this->roleFilter, function ($query) {
+                $query->whereHas('roles', function ($q) {
+                    $q->where('name', $this->roleFilter);
+                });
+            })
+            ->orderBy($this->sortField, $this->sortDirection)
+            ->paginate($this->perPage);
+
         return view('livewire.admin.users.simple-user-index', [
-            'users' => $this->users,
-            'roles' => Role::all(),
+            'users' => $users,
+            'roles' => $roles,
         ]);
     }
 }

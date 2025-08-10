@@ -192,15 +192,15 @@
                                 <td>
                                     <div class="btn-group" role="group">
                                         <!-- View Button -->
-                                        <button class="btn btn-sm btn-outline-info" 
-                                                wire:click="viewUser({{ $user->id }})"
-                                                title="View Details">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
+                                       <a class="btn btn-sm btn-outline-info" 
+                                       href="{{ route('admin.users.show', $user->id) }}" 
+                                       title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                        </a>
 
                                         <!-- Edit Button -->
                                         @can('edit-users')
-                                        <a href="{{ route('admin.users.edit', $user) }}" 
+                                        <a href="{{ route('admin.users.edit', $user->id) }}" 
                                            class="btn btn-sm btn-outline-primary"
                                            title="Edit User">
                                             <i class="bi bi-pencil"></i>

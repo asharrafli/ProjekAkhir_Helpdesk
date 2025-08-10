@@ -20,6 +20,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TestNotificationController;
 use App\Http\Controllers\TestTicketController;
 use App\Http\Controllers\TestBroadcastController;
+use App\Livewire\Admin\Users\ShowUser;
 use App\Models\Tickets;
 use Illuminate\Notifications\Events\NotificationSent;
 
@@ -178,6 +179,7 @@ Route::middleware(['auth'])->group(function () {
         // User management
         Route::prefix('users')->name('users.')->middleware(['can:view-users'])->group(function () {
             Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::get('/{user}/show', ShowUser::class)->name('show');
             Route::get('/create', [UserController::class, 'create'])->name('create')->middleware('can:create-users');
             Route::post('/', [UserController::class, 'store'])->name('store')->middleware('can:create-users');
             Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit')->middleware('can:edit-users');

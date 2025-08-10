@@ -9,6 +9,7 @@ class UserController extends Controller
 {
     public function index()
     {
+        $this->authorize('view-users');
         return view('admin.users.index');
     }
 
@@ -20,5 +21,9 @@ class UserController extends Controller
     public function edit(User $user)
     {
         return view('admin.users.edit', compact('user'));
+    }
+    public function show (User $user)
+    {
+        return view('admin.users.show', compact('user'));
     }
 }
