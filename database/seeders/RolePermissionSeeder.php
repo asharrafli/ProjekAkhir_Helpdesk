@@ -29,6 +29,7 @@ class RolePermissionSeeder extends Seeder
             'view-admin-dashboard',
             'view-manager-dashboard',
             'view-technician-dashboard',
+            'view-general-dashboard',
             
             // User management
             'view-users',
@@ -85,6 +86,12 @@ class RolePermissionSeeder extends Seeder
             
             // Bulk operations
             'bulk-ticket-operations',
+
+            //Manager Permission
+            'view-manager-dashboard',
+            'manage-team-tickets',
+            'view-team-performance',
+            'view-manager-analytics',
         ];
 
         // Use firstOrCreate untuk permissions
@@ -152,6 +159,9 @@ class RolePermissionSeeder extends Seeder
             'view-analytics',
             'view-performance-charts',
             'receive-notifications',
+            'manage-team-tickets',
+            'view-team-performance',
+            'view-manager-analytics',
         ]);
 
         $technician->syncPermissions([

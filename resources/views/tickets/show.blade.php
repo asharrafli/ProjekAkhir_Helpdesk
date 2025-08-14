@@ -325,7 +325,7 @@
             <!-- Ticket Information -->
             <div class="card">
                 <div class="card-header">
-                    <h5><i class="bi bi-info-circle"></i> Ticket Information</h5>
+                    <h5><i class="bi bi-info-circle"></i> Information</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
@@ -400,23 +400,41 @@
                         <div class="timeline-item mb-3">
                             <div class="d-flex">
                                 <div class="flex-shrink-0">
-                                    <div class="bg-primary rounded-circle p-2 text-white">
-                                        <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i>
+                                    <div class="rounded-circle p-2 text-white {{ getActivityColor($activity->description) }}">
+                                        <i class="{{ getActivityIcon($activity->description) }}" style="font-size: 0.75rem;"></i>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
-                                    <div class="fw-bold">{{ $activity->description }}</div>
+                                    <div class="fw-bold">{{ formatActivityDescription($activity->description, $activity->properties) }}</div>
                                     <div class="text-muted small">
-                                        by {{ $activity->causer->name ?? 'System' }} • 
-                                        {{ $activity->created_at->diffForHumans() }}
+                                        oleh {{ $activity->causer->name ?? 'System' }} • 
+                                        {{ $activity->created_at->format('d M Y, H:i') }}
+                                        <span class="text-muted">({{ $activity->created_at->diffForHumans() }})</span>
                                     </div>
+                                    @if($activity->properties && $activity->properties->has('old') && $activity->properties->has('attributes'))
+                                    <div class="mt-1">
+                                        @foreach($activity->properties['attributes'] as $key => $newValue)
+                                            @if(isset($activity->properties['old'][$key]) && $activity->properties['old'][$key] != $newValue)
+                                            <small class="text-info">
+                                                {{ ucfirst(str_replace('_', ' ', $key)) }}: 
+                                                <span class="text-danger">{{ formatValue($activity->properties['old'][$key]) }}</span> 
+                                                → 
+                                                <span class="text-success">{{ formatValue($newValue) }}</span>
+                                            </small><br>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
                         @endforeach
                     </div>
                     @else
-                    <p class="text-muted">No activity recorded yet.</p>
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-clock-history"></i><br>
+                        Belum ada aktivitas yang tercatat.
+                    </p>
                     @endif
                 </div>
             </div>
@@ -463,6 +481,161 @@
 </div>
 @endcan
 
+@php
+function formatActivityDescription($description, $properties = null) {
+    $descriptions = [
+        'created' => 'Tiket dibuat',
+        'updated' => 'Tiket diperbarui',
+        'assigned' => 'Tiket ditugaskan ke teknisi',
+        'claimed' => 'Tiket diklaim oleh teknisi',
+        'status_changed' => 'Status tiket diubah',
+        'priority_changed' => 'Prioritas tiket diubah',
+        'commented' => 'Komentar ditambahkan',
+        'attachment_added' => 'File lampiran ditambahkan',
+        'attachment_removed' => 'File lampiran dihapus',
+        'escalated' => 'Tiket dieskalasi',
+        'resolved' => 'Tiket diselesaikan',
+        'closed' => 'Tiket ditutup',
+        'reopened' => 'Tiket dibuka kembali',
+        'category_changed' => 'Kategori tiket diubah',
+        'subcategory_changed' => 'Subkategori tiket diubah',
+        'description_updated' => 'Deskripsi tiket diperbarui',
+        'title_updated' => 'Judul tiket diperbarui',
+        'due_date_set' => 'Tanggal deadline ditetapkan',
+        'due_date_updated' => 'Tanggal deadline diperbarui',
+        'sla_breached' => 'SLA terlampaui',
+        'notification_sent' => 'Notifikasi dikirim',
+        'reminder_sent' => 'Pengingat dikirim',
+    ];
+
+    // Cek jika ada deskripsi khusus berdasarkan properties
+    if ($properties && $properties->has('attributes')) {
+        $attributes = $properties['attributes'];
+        
+        if (isset($attributes['assigned_to'])) {
+            return 'Tiket ditugaskan ke teknisi';
+        }
+        
+        if (isset($attributes['status'])) {
+            $status = $attributes['status'];
+            $statusLabels = [
+                'open' => 'dibuka',
+                'in_progress' => 'dalam proses',
+                'pending' => 'menunggu',
+                'resolved' => 'diselesaikan',
+                'closed' => 'ditutup',
+                'escalated' => 'dieskalasi'
+            ];
+            return 'Status tiket diubah menjadi ' . ($statusLabels[$status] ?? $status);
+        }
+        
+        if (isset($attributes['priority'])) {
+            $priority = $attributes['priority'];
+            $priorityLabels = [
+                'low' => 'rendah',
+                'medium' => 'sedang',
+                'high' => 'tinggi',
+                'urgent' => 'mendesak'
+            ];
+            return 'Prioritas tiket diubah menjadi ' . ($priorityLabels[$priority] ?? $priority);
+        }
+    }
+
+    return $descriptions[$description] ?? ucfirst(str_replace('_', ' ', $description));
+}
+
+function getActivityIcon($description) {
+    $icons = [
+        'created' => 'bi-plus-circle-fill',
+        'updated' => 'bi-pencil-fill',
+        'assigned' => 'bi-person-fill-add',
+        'claimed' => 'bi-hand-thumbs-up-fill',
+        'status_changed' => 'bi-arrow-repeat',
+        'priority_changed' => 'bi-exclamation-triangle-fill',
+        'commented' => 'bi-chat-fill',
+        'attachment_added' => 'bi-paperclip',
+        'attachment_removed' => 'bi-trash-fill',
+        'escalated' => 'bi-arrow-up-circle-fill',
+        'resolved' => 'bi-check-circle-fill',
+        'closed' => 'bi-x-circle-fill',
+        'reopened' => 'bi-arrow-clockwise',
+        'category_changed' => 'bi-tags-fill',
+        'subcategory_changed' => 'bi-tag-fill',
+        'description_updated' => 'bi-file-text-fill',
+        'title_updated' => 'bi-type',
+        'due_date_set' => 'bi-calendar-plus-fill',
+        'due_date_updated' => 'bi-calendar-check-fill',
+        'sla_breached' => 'bi-exclamation-octagon-fill',
+        'notification_sent' => 'bi-bell-fill',
+        'reminder_sent' => 'bi-alarm-fill',
+    ];
+
+    return $icons[$description] ?? 'bi-circle-fill';
+}
+
+function getActivityColor($description) {
+    $colors = [
+        'created' => 'bg-primary',
+        'updated' => 'bg-info',
+        'assigned' => 'bg-success',
+        'claimed' => 'bg-success',
+        'status_changed' => 'bg-warning',
+        'priority_changed' => 'bg-warning',
+        'commented' => 'bg-secondary',
+        'attachment_added' => 'bg-info',
+        'attachment_removed' => 'bg-danger',
+        'escalated' => 'bg-danger',
+        'resolved' => 'bg-success',
+        'closed' => 'bg-dark',
+        'reopened' => 'bg-warning',
+        'category_changed' => 'bg-info',
+        'subcategory_changed' => 'bg-info',
+        'description_updated' => 'bg-info',
+        'title_updated' => 'bg-info',
+        'due_date_set' => 'bg-primary',
+        'due_date_updated' => 'bg-warning',
+        'sla_breached' => 'bg-danger',
+        'notification_sent' => 'bg-primary',
+        'reminder_sent' => 'bg-warning',
+    ];
+
+    return $colors[$description] ?? 'bg-secondary';
+}
+
+function formatValue($value) {
+    if (is_null($value)) {
+        return 'Tidak ada';
+    }
+    
+    // Format status
+    $statusLabels = [
+        'open' => 'Terbuka',
+        'in_progress' => 'Dalam Proses', 
+        'pending' => 'Menunggu',
+        'resolved' => 'Selesai',
+        'closed' => 'Ditutup',
+        'escalated' => 'Dieskalasi'
+    ];
+    
+    // Format priority
+    $priorityLabels = [
+        'low' => 'Rendah',
+        'medium' => 'Sedang', 
+        'high' => 'Tinggi',
+        'urgent' => 'Mendesak'
+    ];
+    
+    if (isset($statusLabels[$value])) {
+        return $statusLabels[$value];
+    }
+    
+    if (isset($priorityLabels[$value])) {
+        return $priorityLabels[$value];
+    }
+    
+    return ucfirst(str_replace('_', ' ', $value));
+}
+@endphp
 @push('scripts')
 <script>
 function changeStatus(newStatus) {

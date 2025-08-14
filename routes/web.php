@@ -235,10 +235,14 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Manager Dashboard Routes
-    Route::prefix('manager')->name('manager.')->group(function () {
+    Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function () {
         Route::get('/dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
         Route::get('/dashboard/chart-data', [ManagerDashboardController::class, 'getChartData'])->name('dashboard.chart-data');
         Route::post('/dashboard/export-pdf', [ManagerDashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
+    });
+    //Apply Middleware untuk redirect langsung ke Manager Dashboard
+    Route::middleware(['auth', 'manager.redirect'])->group(function () {
+        Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
     });
 
     // Test route for chart API (temporary)
