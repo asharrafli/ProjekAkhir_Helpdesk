@@ -58,50 +58,64 @@
                     @endif
 
                     <!-- File Attachments -->
-                    @if($ticket->attachments && $ticket->attachments->count() > 0)
+                    @php
+                        $attachments = $ticket->attachments()->get();
+                    @endphp
+                    @if($attachments && $attachments->count() > 0)
                     <div class="mb-4">
-                        <h5><i class="bi bi-paperclip"></i> Attachments</h5>
-                        <div class="row">
-                            @foreach($ticket->attachments as $attachment)
-                            <div class="col-md-6 mb-2">
-                                <div class="card card-body bg-light">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            @if($attachment->isImage())
-                                            <i class="bi bi-image text-primary"></i>
-                                            @else
-                                            <i class="bi bi-file-earmark"></i>
-                                            @endif
-                                            <strong>{{ $attachment->original_name }}</strong>
-                                            <br>
-                                            <small class="text-muted">
-                                                {{ $attachment->getFormattedFileSize() }} •
-                                                Uploaded by {{ $attachment->uploadedBy->name }} •
-                                                {{ $attachment->created_at->format('M j, Y') }}
-                                            </small>
-                    
-                                            <!-- Preview gambar jika file adalah image -->
-                                            @if($attachment->isImage())
-                                            <div class="mt-2">
-                                                <img src="{{ $attachment->getDownloadUrl() }}" class="img-thumbnail"
-                                                    style="max-width: 200px; max-height: 150px;" alt="{{ $attachment->original_name }}">
-                                            </div>
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <a href="{{ route('tickets.attachments.download', $attachment) }}" 
-                                               class="btn btn-sm btn-outline-primary">
-                                                <i class="bi bi-download"></i>
+                        <h5><i class="bi bi-paperclip"></i> Attachments ({{ $attachments->count() }})</h5>
+                        <div class="row g-3">
+                            @foreach($attachments as $attachment)
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card h-100">
+                                    @if($attachment->isImage())
+                                    <!-- Image Preview -->
+                                    <div class="card-img-top" style="height: 200px; overflow: hidden;">
+                                        <img src="{{ $attachment->getFileUrl() }}" 
+                                             class="w-100 h-100" 
+                                             style="object-fit: cover;"
+                                             alt="{{ $attachment->original_name }}"
+                                             onclick="showImageModal('{{ $attachment->getFileUrl() }}', '{{ $attachment->original_name }}')">
+                                    </div>
+                                    @else
+                                    <!-- Document Icon -->
+                                    <div class="card-img-top d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                                        @if(str_contains($attachment->mime_type, 'pdf'))
+                                            <i class="bi bi-file-earmark-pdf display-1 text-danger"></i>
+                                        @elseif(str_contains($attachment->mime_type, 'word') || str_contains($attachment->mime_type, 'document'))
+                                            <i class="bi bi-file-earmark-word display-1 text-primary"></i>
+                                        @elseif(str_contains($attachment->mime_type, 'text'))
+                                            <i class="bi bi-file-earmark-text display-1 text-info"></i>
+                                        @elseif(str_contains($attachment->mime_type, 'zip'))
+                                            <i class="bi bi-file-earmark-zip display-1 text-warning"></i>
+                                        @else
+                                            <i class="bi bi-file-earmark display-1 text-secondary"></i>
+                                        @endif
+                                    </div>
+                                    @endif
+                                    
+                                    <div class="card-body">
+                                        <h6 class="card-title" title="{{ $attachment->original_name }}">
+                                            {{ Str::limit($attachment->original_name, 25) }}
+                                        </h6>
+                                        <p class="card-text small text-muted mb-2">
+                                            <strong>Size:</strong> {{ $attachment->getFormattedFileSize() }}<br>
+                                            <strong>Uploaded:</strong> {{ $attachment->created_at->format('M j, Y') }}<br>
+                                            <strong>By:</strong> {{ $attachment->uploadedBy->name }}
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="card-footer bg-transparent">
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ $attachment->getDownloadUrl() }}" 
+                                               class="btn btn-sm btn-outline-primary flex-fill">
+                                                <i class="bi bi-download"></i> Download
                                             </a>
                                             @can('delete-ticket-attachments')
-                                            <form method="POST" action="{{ route('tickets.attachments.delete', $attachment) }}" 
-                                                  class="d-inline" onsubmit="return confirm('Delete this attachment?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteAttachment({{ $attachment->id }})">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                             @endcan
                                         </div>
                                     </div>
@@ -636,6 +650,22 @@ function formatValue($value) {
     return ucfirst(str_replace('_', ' ', $value));
 }
 @endphp
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid" alt="">
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 function changeStatus(newStatus) {
@@ -703,6 +733,39 @@ function submitStatusChange(newStatus, resolutionNotes = null) {
     });
     
     form.submit();
+}
+
+// Function to show image in modal
+function showImageModal(imageSrc, imageName) {
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('imageModalLabel').textContent = imageName;
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+}
+
+// Function to delete attachment
+function deleteAttachment(attachmentId) {
+    if (confirm('Are you sure you want to delete this attachment? This action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `{{ url('admin/tickets/attachments') }}/${attachmentId}`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = '_token';
+        csrfToken.value = '{{ csrf_token() }}';
+        
+        const methodField = document.createElement('input');
+        methodField.type = 'hidden';
+        methodField.name = '_method';
+        methodField.value = 'DELETE';
+        
+        form.appendChild(csrfToken);
+        form.appendChild(methodField);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 </script>
 @endpush

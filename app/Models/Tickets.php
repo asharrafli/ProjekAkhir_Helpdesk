@@ -77,7 +77,7 @@ class Tickets extends Model
 
     public function attachments()
     {
-        return $this->hasMany(TicketAttachment::class, 'ticket_id');
+        return $this->hasMany(\App\Models\TicketAttachment::class, 'ticket_id');
     }
 
     public function activities()

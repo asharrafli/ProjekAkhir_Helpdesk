@@ -112,7 +112,8 @@ class TicketController extends Controller
             'description_ticket' => 'required|string',
             'priority' => 'required|in:low,medium,high,critical,urgent',
             'assigned_to' => 'nullable|exists:users,id',
-            'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,pdf,doc,docx,txt,zip|max:10240',
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,bmp,svg,webp,pdf,doc,docx,txt,zip|max:10240',
         ]);
 
         DB::beginTransaction();
@@ -262,7 +263,8 @@ class TicketController extends Controller
             'status' => 'required|in:open,in_progress,assigned,pending,escalated,closed,resolved',
             'assigned_to' => 'nullable|exists:users,id',
             'resolution_notes' => 'nullable|string',
-            'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,pdf,doc,docx,txt,zip|max:10240',
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => 'nullable|file|mimes:jpg,jpeg,png,gif,bmp,svg,webp,pdf,doc,docx,txt,zip|max:10240',
         ]);
 
         $oldStatus = $ticket->status;
@@ -683,7 +685,8 @@ class TicketController extends Controller
         
         $request->validate([
             'attachments' => 'required',
-            'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,pdf,doc,docx,txt,zip|max:10240',
+            'attachments.*' => 'file|mimes:jpg,jpeg,png,gif,bmp,svg,webp,pdf,doc,docx,txt,zip|max:10240',
+            'attachments' => 'required|array|max:10',
         ]);
 
         if ($request->hasFile('attachments')) {

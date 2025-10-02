@@ -57,4 +57,14 @@ class TicketAttachment extends Model
         
         return in_array($this->mime_type, $documentTypes);
     }
+
+    public function getDownloadUrl(): string
+    {
+        return route('tickets.attachments.download', $this);
+    }
+
+    public function getFileUrl(): string
+    {
+        return asset('storage/' . $this->file_path);
+    }
 }

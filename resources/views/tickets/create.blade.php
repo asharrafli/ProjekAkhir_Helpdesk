@@ -84,15 +84,35 @@
                         <!-- File Attachments -->
                         <div class="mb-3">
                             <label for="attachments" class="form-label">Attachments</label>
-                            <input type="file" name="attachments[]" id="attachments" 
-                                   class="form-control @error('attachments.*') is-invalid @enderror" 
-                                   multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.zip">
+                            
+                            <!-- Drop Zone -->
+                            <div id="drop-zone" class="border border-2 border-dashed rounded p-4 text-center mb-3" 
+                                 style="border-color: #dee2e6; min-height: 120px; transition: all 0.3s ease;">
+                                <div id="drop-zone-content">
+                                    <i class="bi bi-cloud-upload fs-1 text-muted mb-2"></i>
+                                    <p class="mb-2 text-muted">Drag and drop files here or click to browse</p>
+                                    <input type="file" name="attachments[]" id="attachments" 
+                                           class="form-control d-none @error('attachments.*') is-invalid @enderror" 
+                                           multiple accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.zip,.bmp,.svg,.webp">
+                                    <button type="button" id="browse-btn" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-folder2-open"></i> Browse Files
+                                    </button>
+                                </div>
+                            </div>
+                            
                             @error('attachments.*')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
+                            
+                            <!-- File Preview Area -->
+                            <div id="file-preview" class="mt-3" style="display: none;">
+                                <h6>Selected Files:</h6>
+                                <div id="file-list" class="row g-2"></div>
+                            </div>
+                            
                             <div class="form-text">
-                                You can upload multiple files. Supported formats: Images (JPG, PNG, GIF), Documents (PDF, DOC, DOCX, TXT), Archives (ZIP).
-                                Maximum file size: 10MB per file.
+                                <strong>Supported formats:</strong> Images (JPG, PNG, GIF, BMP, SVG, WebP), Documents (PDF, DOC, DOCX, TXT), Archives (ZIP).<br>
+                                <strong>Maximum file size:</strong> 10MB per file. <strong>Maximum files:</strong> 10 files.
                             </div>
                         </div>
 
@@ -157,6 +177,38 @@
 </div>
 
 @push('scripts')
+<style>
+    #drop-zone {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    #drop-zone:hover {
+        border-color: #0d6efd !important;
+        background-color: #f8f9ff !important;
+    }
+    
+    .file-preview-card {
+        transition: transform 0.2s ease;
+    }
+    
+    .file-preview-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .file-remove-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .file-remove-btn:hover {
+        transform: scale(1.05);
+    }
+    
+    #file-preview img {
+        border-radius: 4px;
+    }
+</style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Subcategory filtering based on category
@@ -190,34 +242,193 @@ document.addEventListener('DOMContentLoaded', function() {
         categorySelect.dispatchEvent(new Event('change'));
     }
     
-    // File upload preview
+    // Enhanced file upload with drag & drop and preview
     const attachmentsInput = document.getElementById('attachments');
-    if (attachmentsInput) {
+    const dropZone = document.getElementById('drop-zone');
+    const browseBtn = document.getElementById('browse-btn');
+    const filePreview = document.getElementById('file-preview');
+    const fileList = document.getElementById('file-list');
+    let selectedFiles = [];
+    
+    if (attachmentsInput && dropZone) {
+        // Browse button click
+        browseBtn.addEventListener('click', function() {
+            attachmentsInput.click();
+        });
+        
+        // File input change
         attachmentsInput.addEventListener('change', function() {
-            const files = this.files;
-            let fileInfo = '';
+            handleFiles(this.files);
+        });
+        
+        // Drag and drop events
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#0d6efd';
+            this.style.backgroundColor = '#f8f9ff';
+        });
+        
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#dee2e6';
+            this.style.backgroundColor = 'transparent';
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#dee2e6';
+            this.style.backgroundColor = 'transparent';
             
-            if (files.length > 0) {
-                fileInfo = `${files.length} file(s) selected: `;
-                const fileNames = Array.from(files).map(file => file.name).join(', ');
-                fileInfo += fileNames;
-                
-                // Check file sizes
-                let oversizedFiles = [];
-                Array.from(files).forEach(file => {
-                    if (file.size > 10 * 1024 * 1024) { // 10MB
-                        oversizedFiles.push(file.name);
-                    }
-                });
-                
-                if (oversizedFiles.length > 0) {
-                    alert('The following files are too large (>10MB): ' + oversizedFiles.join(', '));
-                }
+            const files = e.dataTransfer.files;
+            handleFiles(files);
+        });
+        
+        // Click on drop zone to browse
+        dropZone.addEventListener('click', function(e) {
+            if (e.target === this || e.target.closest('#drop-zone-content')) {
+                attachmentsInput.click();
+            }
+        });
+        
+        function handleFiles(files) {
+            const maxFiles = 10;
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/svg+xml', 'image/webp', 
+                                 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+                                 'text/plain', 'application/zip'];
+            
+            // Check total files limit
+            if (selectedFiles.length + files.length > maxFiles) {
+                alert(`Maximum ${maxFiles} files allowed. You have ${selectedFiles.length} files already selected.`);
+                return;
             }
             
-            // Show file info (you can create a div to display this)
-            console.log(fileInfo);
-        });
+            let validFiles = [];
+            let errorMessages = [];
+            
+            Array.from(files).forEach(file => {
+                // Check file size
+                if (file.size > maxSize) {
+                    errorMessages.push(`${file.name} is too large (${formatFileSize(file.size)}). Maximum size is 10MB.`);
+                    return;
+                }
+                
+                // Check file type
+                if (!allowedTypes.includes(file.type)) {
+                    errorMessages.push(`${file.name} is not a supported file type.`);
+                    return;
+                }
+                
+                // Check for duplicates
+                const isDuplicate = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+                if (isDuplicate) {
+                    errorMessages.push(`${file.name} is already selected.`);
+                    return;
+                }
+                
+                validFiles.push(file);
+            });
+            
+            if (errorMessages.length > 0) {
+                alert('Some files were not added:\n\n' + errorMessages.join('\n'));
+            }
+            
+            if (validFiles.length > 0) {
+                selectedFiles.push(...validFiles);
+                updateFilePreview();
+                updateFileInput();
+            }
+        }
+        
+        function updateFilePreview() {
+            if (selectedFiles.length === 0) {
+                filePreview.style.display = 'none';
+                return;
+            }
+            
+            filePreview.style.display = 'block';
+            fileList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'col-md-6 col-lg-4';
+                
+                const isImage = file.type.startsWith('image/');
+                let previewContent = '';
+                
+                if (isImage) {
+                    const fileURL = URL.createObjectURL(file);
+                    previewContent = `
+                        <div class="card h-100">
+                            <img src="${fileURL}" class="card-img-top" style="height: 120px; object-fit: cover;">
+                            <div class="card-body p-2">
+                                <h6 class="card-title small mb-1" title="${file.name}">${truncateFileName(file.name, 20)}</h6>
+                                <p class="card-text small text-muted mb-2">${formatFileSize(file.size)}</p>
+                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeFile(${index})">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const fileIcon = getFileIcon(file.type);
+                    previewContent = `
+                        <div class="card h-100">
+                            <div class="card-body text-center p-3">
+                                <i class="bi ${fileIcon} fs-1 text-primary mb-2"></i>
+                                <h6 class="card-title small mb-1" title="${file.name}">${truncateFileName(file.name, 20)}</h6>
+                                <p class="card-text small text-muted mb-2">${formatFileSize(file.size)}</p>
+                                <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeFile(${index})">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                fileItem.innerHTML = previewContent;
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        function updateFileInput() {
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => {
+                dt.items.add(file);
+            });
+            attachmentsInput.files = dt.files;
+        }
+        
+        // Global function to remove file
+        window.removeFile = function(index) {
+            selectedFiles.splice(index, 1);
+            updateFilePreview();
+            updateFileInput();
+        };
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function truncateFileName(name, maxLength) {
+            if (name.length <= maxLength) return name;
+            const extension = name.split('.').pop();
+            const nameWithoutExt = name.substring(0, name.lastIndexOf('.'));
+            const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
+            return truncatedName + '.' + extension;
+        }
+        
+        function getFileIcon(mimeType) {
+            if (mimeType.includes('pdf')) return 'bi-file-earmark-pdf';
+            if (mimeType.includes('word') || mimeType.includes('document')) return 'bi-file-earmark-word';
+            if (mimeType.includes('text')) return 'bi-file-earmark-text';
+            if (mimeType.includes('zip')) return 'bi-file-earmark-zip';
+            return 'bi-file-earmark';
+        }
     }
     
     // Auto-resize textarea
